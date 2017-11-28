@@ -21,15 +21,21 @@ Tier<Op,NextTier>: Box<Expr> = {
     NextTier
 };
 
+UnaryTier<Op, NextTier>: Box<Expr> = {
+    Op UnaryTier<Op, NextTier> => Box::new(Expr::UnaryOp(<>)),
+    NextTier,
+};
+
 pub Expr = OrTest;
 OrTest = Tier<OrOp, AndTest>;
 AndTest = Tier<AndOp, NotTest>;
-NotTest = {
-    "not" <e:AExpr> => Box::new(Expr::UnaryOp(UnaryOpCode::BoolNot, e)),
-    AExpr,
-};
+NotTest = UnaryTier<BoolNotOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, Term>;
+
+BoolNotOp: UnaryOpCode = {
+    "not" => UnaryOpCode::BoolNot,
+};
 
 OrOp: BinaryOpCode = {
     "or" => BinaryOpCode::BoolOr,

@@ -31,3 +31,13 @@ fn and_test_expr() {
 fn not_test_expr() {
     test_expr!("not 1", "UnaryOp(not 1)")
 }
+
+#[test]
+fn double_not_expr() {
+    test_expr!("not not 1", "UnaryOp(not UnaryOp(not 1))")
+}
+
+#[test]
+fn nested_not_expr() {
+    test_expr!("1 and not 0 + 1", "BinaryOp(1 and UnaryOp(not BinaryOp(0 + 1)))")
+}
