@@ -13,6 +13,7 @@ pub enum BinaryOpCode {
     Div,
     Add,
     Sub,
+    Mod,
 
     BoolOr,
     BoolAnd,
@@ -33,6 +34,9 @@ pub enum BinaryOpCode {
 
 #[derive(Copy, Clone)]
 pub enum UnaryOpCode {
+    Neg,
+    Plus,
+    BitNot,
     BoolNot,
 }
 
@@ -56,6 +60,7 @@ impl Debug for BinaryOpCode {
             Div => "/",
             Add => "+",
             Sub => "-",
+            Mod => "%",
 
             BoolOr => "or",
             BoolAnd => "and",
@@ -81,6 +86,9 @@ impl Debug for UnaryOpCode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::UnaryOpCode::*;
         let op_str = match *self {
+            Neg => "-",
+            Plus => "+",
+            BitNot => "~",
             BoolNot => "not",
         };
         write!(fmt, "{}", op_str)

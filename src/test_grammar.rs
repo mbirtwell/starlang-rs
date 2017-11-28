@@ -66,3 +66,8 @@ fn and_and_xor_expr() {
 fn shift_operators() {
     test_expr!("4 + 5 << 3 & 2 >> 1", "BinaryOp(BinaryOp(BinaryOp(4 + 5) << 3) & BinaryOp(2 >> 1))")
 }
+
+#[test]
+fn u_expr() {
+    test_expr!("~4 % -3", "BinaryOp(UnaryOp(~ 4) % UnaryOp(- 3))")
+}

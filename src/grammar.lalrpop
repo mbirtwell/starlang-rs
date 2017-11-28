@@ -39,7 +39,9 @@ XorExpr = Tier<BitXorOp, AndExpr>;
 AndExpr = Tier<BitAndOp, ShiftExpr>;
 ShiftExpr = Tier<ShiftOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
-MExpr = Tier<MOp, Term>;
+MExpr = Tier<MOp, UExpr>;
+UExpr = UnaryTier<UOp, Primary>;
+Primary = Term;
 
 ComparisonOp: BinaryOpCode = {
     "<" => BinaryOpCode::LessThan,
@@ -70,6 +72,13 @@ AOp: BinaryOpCode = {
 MOp: BinaryOpCode = {
     "*" => BinaryOpCode::Mul,
     "/" => BinaryOpCode::Div,
+    "%" => BinaryOpCode::Mod,
+};
+
+UOp: UnaryOpCode = {
+    "-" => UnaryOpCode::Neg,
+    "+" => UnaryOpCode::Plus,
+    "~" => UnaryOpCode::BitNot,
 };
 
 Term: Box<Expr> = {
