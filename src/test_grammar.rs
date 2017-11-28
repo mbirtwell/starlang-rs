@@ -61,3 +61,8 @@ fn or_expr() {
 fn and_and_xor_expr() {
     test_expr!("5 & 1 | 2 ^ 3", "BinaryOp(BinaryOp(5 & 1) | BinaryOp(2 ^ 3))")
 }
+
+#[test]
+fn shift_operators() {
+    test_expr!("4 + 5 << 3 & 2 >> 1", "BinaryOp(BinaryOp(BinaryOp(4 + 5) << 3) & BinaryOp(2 >> 1))")
+}

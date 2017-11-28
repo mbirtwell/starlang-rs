@@ -27,6 +27,8 @@ pub enum BinaryOpCode {
     BitOr,
     BitXor,
     BitAnd,
+    LeftShift,
+    RightShift,
 }
 
 #[derive(Copy, Clone)]
@@ -68,6 +70,8 @@ impl Debug for BinaryOpCode {
             BitOr => "|",
             BitXor => "^",
             BitAnd => "&",
+            LeftShift => "<<",
+            RightShift => ">>",
         };
         write!(fmt, "{}", op_str)
     }

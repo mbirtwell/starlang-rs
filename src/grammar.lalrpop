@@ -36,7 +36,8 @@ ComparisonExpr = {
 };
 OrExpr = Tier<BitOrOp, XorExpr>;
 XorExpr = Tier<BitXorOp, AndExpr>;
-AndExpr = Tier<BitAndOp, AExpr>;
+AndExpr = Tier<BitAndOp, ShiftExpr>;
+ShiftExpr = Tier<ShiftOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, Term>;
 
@@ -55,6 +56,11 @@ BitAndOp: BinaryOpCode = { "&" => BinaryOpCode::BitAnd };
 BoolNotOp: UnaryOpCode = { "not" => UnaryOpCode::BoolNot };
 BoolOrOp: BinaryOpCode = { "or" => BinaryOpCode::BoolOr };
 BoolAndOp: BinaryOpCode = { "and" => BinaryOpCode::BoolAnd };
+
+ShiftOp: BinaryOpCode = {
+    "<<" => BinaryOpCode::LeftShift,
+    ">>" => BinaryOpCode::RightShift,
+};
 
 AOp: BinaryOpCode = {
     "+" => BinaryOpCode::Add,
