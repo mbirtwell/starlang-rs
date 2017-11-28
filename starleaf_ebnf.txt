@@ -1,0 +1,42 @@
+# Grammar from https://docs.python.org/2/reference/expressions.html but simplified a bit
+# Removed all comprehensions, tuple support, advanced literals, slicing,
+# first class functions, kwargs, * and ** arguments to functions
+# floats, power operator
+atom            ::=  identifier | literal | parenth_form
+literal         ::=  integer | character | stringliteral | arrayliteral
+parenth_form    ::=  "(" expression ")"
+arrayliteral    ::=  "[" expression_list "]"  # Equivalent to the expression_list for of list_display
+expression_list ::=  ( expression "," )* [ expression ]
+
+primary         ::=  atom | subscription | call
+subscription    ::=  primary "[" expression "]"
+call            ::=  identifier "(" expression_list ")"
+
+# Expressions (higher precedence / binding to lower)
+u_expr          ::=  primary | "-" u_expr | "+" u_expr | "~" u_expr
+m_expr          ::=  u_expr | m_expr "*" u_expr | m_expr "/" u_expr | m_expr "%" u_expr
+a_expr          ::=  m_expr | a_expr "+" m_expr | a_expr "-" m_expr
+shift_expr      ::=  a_expr | shift_expr ( "<<" | ">>" ) a_expr
+and_expr        ::=  shift_expr | and_expr "&" shift_expr
+xor_expr        ::=  and_expr | xor_expr "^" and_expr
+or_expr         ::=  xor_expr | or_expr "|" xor_expr
+comparison      ::=  or_expr | or_expr comp_operator or_expr
+comp_operator   ::=  "<" | ">" | "==" | ">=" | "<=" | "!="
+not_test        ::=  comparison | "not" not_test
+and_test        ::=  not_test | and_test "and" not_test
+or_test         ::=  and_test | or_test "or" and_test
+expression      ::=  or_test
+
+# My stuff
+start           ::=  function *
+function        ::=  "function" identifier "(" argument_list ")" block
+argument_list   ::=  ( identifier  "," )* [identifier]
+block           ::=  "{" statement_list "}"
+statement_list  ::=  (simple_statement ";" | block_statement | ";" ) *
+simple_statement::=  declaration | assignment | expression | return
+block_statement ::=  while | if
+declaration     ::=  "let" identifier "=" expression
+assignment      ::=  expression "=" expression
+while           ::=  "while" expression block  # N.B. no () around expression
+if              ::=  "if" expression block
+return          ::=  "return" expression
