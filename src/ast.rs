@@ -2,12 +2,13 @@ use std::fmt::{Debug, Formatter, Error};
 
 pub enum Expr {
     Number(i32),
-    Op(Box<Expr>, Opcode, Box<Expr>),
+    BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
+    UnaryOp(UnaryOpCode, Box<Expr>),
     Error,
 }
 
 #[derive(Copy, Clone)]
-pub enum Opcode {
+pub enum BinaryOpCode {
     Mul,
     Div,
     Add,
@@ -17,20 +18,26 @@ pub enum Opcode {
     BoolAnd,
 }
 
+#[derive(Copy, Clone)]
+pub enum UnaryOpCode {
+    BoolNot,
+}
+
 impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expr::*;
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
-            Op(ref l, op, ref r) => write!(fmt, "Expr({:?} {:?} {:?})", l, op, r),
+            BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
+            UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),
             Error => write!(fmt, "error"),
         }
     }
 }
 
-impl Debug for Opcode {
+impl Debug for BinaryOpCode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Opcode::*;
+        use self::BinaryOpCode::*;
         let op_str = match *self {
             Mul => "*",
             Div => "/",
@@ -39,6 +46,16 @@ impl Debug for Opcode {
 
             BoolOr => "or",
             BoolAnd => "and",
+        };
+        write!(fmt, "{}", op_str)
+    }
+}
+
+impl Debug for UnaryOpCode {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::UnaryOpCode::*;
+        let op_str = match *self {
+            BoolNot => "not",
         };
         write!(fmt, "{}", op_str)
     }

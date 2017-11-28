@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use ast::{Expr, Opcode};
+use ast::{Expr, BinaryOpCode, UnaryOpCode};
 
 grammar;
 
@@ -17,32 +17,36 @@ Comma<T>: Vec<T> = {
 };
 
 Tier<Op,NextTier>: Box<Expr> = {
-    Tier<Op,NextTier> Op NextTier => Box::new(Expr::Op(<>)),
+    Tier<Op,NextTier> Op NextTier => Box::new(Expr::BinaryOp(<>)),
     NextTier
 };
 
 pub Expr = OrTest;
 OrTest = Tier<OrOp, AndTest>;
-AndTest = Tier<AndOp, AExpr>;
+AndTest = Tier<AndOp, NotTest>;
+NotTest = {
+    "not" <e:AExpr> => Box::new(Expr::UnaryOp(UnaryOpCode::BoolNot, e)),
+    AExpr,
+};
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, Term>;
 
-OrOp: Opcode = {
-    "or" => Opcode::BoolOr,
+OrOp: BinaryOpCode = {
+    "or" => BinaryOpCode::BoolOr,
 };
 
-AndOp: Opcode = {
-    "and" => Opcode::BoolAnd,
+AndOp: BinaryOpCode = {
+    "and" => BinaryOpCode::BoolAnd,
 };
 
-AOp: Opcode = {
-    "+" => Opcode::Add,
-    "-" => Opcode::Sub,
+AOp: BinaryOpCode = {
+    "+" => BinaryOpCode::Add,
+    "-" => BinaryOpCode::Sub,
 };
 
-MOp: Opcode = {
-    "*" => Opcode::Mul,
-    "/" => Opcode::Div,
+MOp: BinaryOpCode = {
+    "*" => BinaryOpCode::Mul,
+    "/" => BinaryOpCode::Div,
 };
 
 Term: Box<Expr> = {
