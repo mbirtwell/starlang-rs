@@ -12,6 +12,9 @@ pub enum Opcode {
     Div,
     Add,
     Sub,
+
+    BoolOr,
+    BoolAnd,
 }
 
 impl Debug for Expr {
@@ -28,11 +31,15 @@ impl Debug for Expr {
 impl Debug for Opcode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Opcode::*;
-        match *self {
-            Mul => write!(fmt, "*"),
-            Div => write!(fmt, "/"),
-            Add => write!(fmt, "+"),
-            Sub => write!(fmt, "-"),
-        }
+        let op_str = match *self {
+            Mul => "*",
+            Div => "/",
+            Add => "+",
+            Sub => "-",
+
+            BoolOr => "or",
+            BoolAnd => "and",
+        };
+        write!(fmt, "{}", op_str)
     }
 }

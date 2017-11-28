@@ -5,8 +5,8 @@ grammar;
 
 pub Exprs = Comma<Expr>;
 
-Comma<T>: Vec<T> = { // (0)
-    <v:(<T> ",")*> <e:T?> => match e { // (1)
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
         None=> v,
         Some(e) => {
             let mut v = v;
@@ -21,9 +21,19 @@ Tier<Op,NextTier>: Box<Expr> = {
     NextTier
 };
 
-pub Expr = AExpr;
+pub Expr = OrTest;
+OrTest = Tier<OrOp, AndTest>;
+AndTest = Tier<AndOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, Term>;
+
+OrOp: Opcode = {
+    "or" => Opcode::BoolOr,
+};
+
+AndOp: Opcode = {
+    "and" => Opcode::BoolAnd,
+};
 
 AOp: Opcode = {
     "+" => Opcode::Add,
