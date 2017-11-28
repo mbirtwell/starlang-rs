@@ -27,8 +27,8 @@ UnaryTier<Op, NextTier>: Box<Expr> = {
 };
 
 pub Expr = OrTest;
-OrTest = Tier<OrOp, AndTest>;
-AndTest = Tier<AndOp, NotTest>;
+OrTest = Tier<OrTestOp, AndTest>;
+AndTest = Tier<AndTestOp, NotTest>;
 NotTest = UnaryTier<BoolNotOp, ComparisonExpr>;
 ComparisonExpr = {
     AExpr ComparisonOp AExpr => Box::new(Expr::BinaryOp(<>)),
@@ -50,11 +50,11 @@ BoolNotOp: UnaryOpCode = {
     "not" => UnaryOpCode::BoolNot,
 };
 
-OrOp: BinaryOpCode = {
+OrTestOp: BinaryOpCode = {
     "or" => BinaryOpCode::BoolOr,
 };
 
-AndOp: BinaryOpCode = {
+AndTestOp: BinaryOpCode = {
     "and" => BinaryOpCode::BoolAnd,
 };
 
