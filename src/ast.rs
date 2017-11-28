@@ -25,6 +25,8 @@ pub enum BinaryOpCode {
     NotEqual,
 
     BitOr,
+    BitXor,
+    BitAnd,
 }
 
 #[derive(Copy, Clone)]
@@ -64,6 +66,8 @@ impl Debug for BinaryOpCode {
             NotEqual => "!=",
 
             BitOr => "|",
+            BitXor => "^",
+            BitAnd => "&",
         };
         write!(fmt, "{}", op_str)
     }

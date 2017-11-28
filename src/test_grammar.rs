@@ -56,3 +56,8 @@ fn chained_comparision_op_not_allowed() {
 fn or_expr() {
     test_expr!("3 < 4 | 8", "BinaryOp(3 < BinaryOp(4 | 8))")
 }
+
+#[test]
+fn and_and_xor_expr() {
+    test_expr!("5 & 1 | 2 ^ 3", "BinaryOp(BinaryOp(5 & 1) | BinaryOp(2 ^ 3))")
+}
