@@ -71,3 +71,8 @@ fn shift_operators() {
 fn u_expr() {
     test_expr!("~4 % -3", "BinaryOp(UnaryOp(~ 4) % UnaryOp(- 3))")
 }
+
+#[test]
+fn call() {
+    test_expr!("func(1, 2, 3)", "Call(function: func, arguments: [1, 2, 3])")
+}

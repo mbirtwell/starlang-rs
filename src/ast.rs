@@ -4,6 +4,7 @@ pub enum Expr {
     Number(i32),
     BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
     UnaryOp(UnaryOpCode, Box<Expr>),
+    Call(String, Vec<Box<Expr>>),
     Error,
 }
 
@@ -47,6 +48,7 @@ impl Debug for Expr {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),
+            Call(ref func, ref args) => write!(fmt, "Call(function: {}, arguments: {:?})", func, args),
             Error => write!(fmt, "error"),
         }
     }
