@@ -16,6 +16,13 @@ pub enum BinaryOpCode {
 
     BoolOr,
     BoolAnd,
+
+    LessThan,
+    MoreThan,
+    LessThanOrEqual,
+    MoreThanOrEqual,
+    Equal,
+    NotEqual,
 }
 
 #[derive(Copy, Clone)]
@@ -46,6 +53,13 @@ impl Debug for BinaryOpCode {
 
             BoolOr => "or",
             BoolAnd => "and",
+
+            LessThan => "<",
+            LessThanOrEqual => "<=",
+            MoreThan => ">",
+            MoreThanOrEqual => ">=",
+            Equal => "==",
+            NotEqual => "!=",
         };
         write!(fmt, "{}", op_str)
     }

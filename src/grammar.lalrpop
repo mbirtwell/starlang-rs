@@ -29,9 +29,22 @@ UnaryTier<Op, NextTier>: Box<Expr> = {
 pub Expr = OrTest;
 OrTest = Tier<OrOp, AndTest>;
 AndTest = Tier<AndOp, NotTest>;
-NotTest = UnaryTier<BoolNotOp, AExpr>;
+NotTest = UnaryTier<BoolNotOp, ComparisonExpr>;
+ComparisonExpr = {
+    AExpr ComparisonOp AExpr => Box::new(Expr::BinaryOp(<>)),
+    AExpr,
+};
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, Term>;
+
+ComparisonOp: BinaryOpCode = {
+    "<" => BinaryOpCode::LessThan,
+    "<=" => BinaryOpCode::LessThanOrEqual,
+    ">" => BinaryOpCode::MoreThan,
+    ">=" => BinaryOpCode::MoreThanOrEqual,
+    "==" => BinaryOpCode::Equal,
+    "!=" => BinaryOpCode::NotEqual,
+};
 
 BoolNotOp: UnaryOpCode = {
     "not" => UnaryOpCode::BoolNot,

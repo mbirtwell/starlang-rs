@@ -41,3 +41,13 @@ fn double_not_expr() {
 fn nested_not_expr() {
     test_expr!("1 and not 0 + 1", "BinaryOp(1 and UnaryOp(not BinaryOp(0 + 1)))")
 }
+
+#[test]
+fn binary_op() {
+    test_expr!("3 < 4", "BinaryOp(3 < 4)")
+}
+
+#[test]
+fn chained_binary_op_not_allowed() {
+    assert!(grammar::parse_Expr("3 < 4 < 5").is_err())
+}
