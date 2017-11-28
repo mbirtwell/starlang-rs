@@ -19,7 +19,7 @@ impl Debug for Expr {
         use self::Expr::*;
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
-            Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
+            Op(ref l, op, ref r) => write!(fmt, "Expr({:?} {:?} {:?})", l, op, r),
             Error => write!(fmt, "error"),
         }
     }

@@ -21,24 +21,25 @@ Tier<Op,NextTier>: Box<Expr> = {
     NextTier
 };
 
-Expr = Tier<ExprOp, Factor>;
-Factor = Tier<FactorOp, Term>;
+pub Expr = AExpr;
+AExpr = Tier<AOp, MExpr>;
+MExpr = Tier<MOp, Term>;
 
-ExprOp: Opcode = { // (3)
+AOp: Opcode = {
     "+" => Opcode::Add,
     "-" => Opcode::Sub,
 };
 
-FactorOp: Opcode = {
+MOp: Opcode = {
     "*" => Opcode::Mul,
     "/" => Opcode::Div,
 };
 
 Term: Box<Expr> = {
-    Num => Box::new(Expr::Number(<>)),
+    IntegerLiteral => Box::new(Expr::Number(<>)),
     "(" <Expr> ")"
 };
 
-Num: i32 = {
+IntegerLiteral: i32 = {
     r"[0-9]+" => i32::from_str(<>).unwrap()
 };
