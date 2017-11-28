@@ -43,11 +43,16 @@ fn nested_not_expr() {
 }
 
 #[test]
-fn binary_op() {
+fn comparision_op() {
     test_expr!("3 < 4", "BinaryOp(3 < 4)")
 }
 
 #[test]
-fn chained_binary_op_not_allowed() {
+fn chained_comparision_op_not_allowed() {
     assert!(grammar::parse_Expr("3 < 4 < 5").is_err())
+}
+
+#[test]
+fn or_expr() {
+    test_expr!("3 < 4 | 8", "BinaryOp(3 < BinaryOp(4 | 8))")
 }

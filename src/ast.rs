@@ -23,6 +23,8 @@ pub enum BinaryOpCode {
     MoreThanOrEqual,
     Equal,
     NotEqual,
+
+    BitOr,
 }
 
 #[derive(Copy, Clone)]
@@ -60,6 +62,8 @@ impl Debug for BinaryOpCode {
             MoreThanOrEqual => ">=",
             Equal => "==",
             NotEqual => "!=",
+
+            BitOr => "|",
         };
         write!(fmt, "{}", op_str)
     }
