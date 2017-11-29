@@ -13,6 +13,17 @@ UnaryTier<Op, NextTier>: Box<Expr> = {
     NextTier,
 };
 
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None=> v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
 pub Expr = OrTest;
 OrTest = Tier<BoolOrOp, AndTest>;
 AndTest = Tier<BoolAndOp, NotTest>;
@@ -28,32 +39,13 @@ ShiftExpr = Tier<ShiftOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, UExpr>;
 UExpr = UnaryTier<UOp, Primary>;
+
 Primary = {Call, Subscription, Atom};
-
-Call: Box<Expr> = {
-    <Identifier> "(" <ExpressionList> ")" => Box::new(Expr::Call(<>)),
-};
-
-Identifier: String = {
-    r"[a-zA-Z_]\w*" => <>.to_string(),
-};
-
+Call: Box<Expr> = <Identifier> "(" <ExpressionList> ")" => Box::new(Expr::Call(<>));
+Identifier: String = r"[a-zA-Z_]\w*" => <>.to_string();
 ExpressionList = Comma<Expr>;
 
-Comma<T>: Vec<T> = {
-    <v:(<T> ",")*> <e:T?> => match e {
-        None=> v,
-        Some(e) => {
-            let mut v = v;
-            v.push(e);
-            v
-        }
-    }
-};
-
-Subscription: Box<Expr> = {
-    <Primary> "[" <Expr> "]" => Box::new(Expr::Subscription(<>)),
-};
+Subscription: Box<Expr> = <Primary> "[" <Expr> "]" => Box::new(Expr::Subscription(<>));
 
 Atom: Box<Expr> = {
     IntegerLiteral => Box::new(Expr::Number(<>)),
@@ -63,17 +55,9 @@ Atom: Box<Expr> = {
     "(" <Expr> ")"
 };
 
-IntegerLiteral: i32 = {
-    r"[0-9]+" => i32::from_str(<>).unwrap()
-};
-
-ArrayLiteral = {
-    "[" <ExpressionList> "]",
-};
-
-CharacterLiteral: char = {
-    r"'[^']'" => <>.chars().nth(1).unwrap(),
-};
+IntegerLiteral: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();
+ArrayLiteral = "[" <ExpressionList> "]";
+CharacterLiteral: char = r"'[^']'" => <>.chars().nth(1).unwrap();
 
 ComparisonOp: BinaryOpCode = {
     "<" => BinaryOpCode::LessThan,
@@ -84,12 +68,12 @@ ComparisonOp: BinaryOpCode = {
     "!=" => BinaryOpCode::NotEqual,
 };
 
-BitOrOp: BinaryOpCode = { "|" => BinaryOpCode::BitOr };
-BitXorOp: BinaryOpCode = { "^" => BinaryOpCode::BitXor };
-BitAndOp: BinaryOpCode = { "&" => BinaryOpCode::BitAnd };
-BoolNotOp: UnaryOpCode = { "not" => UnaryOpCode::BoolNot };
-BoolOrOp: BinaryOpCode = { "or" => BinaryOpCode::BoolOr };
-BoolAndOp: BinaryOpCode = { "and" => BinaryOpCode::BoolAnd };
+BitOrOp: BinaryOpCode = "|" => BinaryOpCode::BitOr;
+BitXorOp: BinaryOpCode = "^" => BinaryOpCode::BitXor;
+BitAndOp: BinaryOpCode = "&" => BinaryOpCode::BitAnd;
+BoolNotOp: UnaryOpCode = "not" => UnaryOpCode::BoolNot;
+BoolOrOp: BinaryOpCode = "or" => BinaryOpCode::BoolOr;
+BoolAndOp: BinaryOpCode = "and" => BinaryOpCode::BoolAnd;
 
 ShiftOp: BinaryOpCode = {
     "<<" => BinaryOpCode::LeftShift,
