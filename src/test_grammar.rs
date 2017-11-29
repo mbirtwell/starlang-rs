@@ -76,3 +76,13 @@ fn u_expr() {
 fn call() {
     test_expr!("func(1, 2, 3)", "Call(function: func, arguments: [1, 2, 3])")
 }
+
+#[test]
+fn identifier_expr() {
+    test_expr!("3 + var1", "BinaryOp(3 + Identifier(var1))")
+}
+
+#[test]
+fn subscription() {
+    test_expr!("array[1 + 2]", "Subscription(array_expr: Identifier(array), subscript_expr: BinaryOp(1 + 2))")
+}

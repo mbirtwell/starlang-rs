@@ -5,6 +5,8 @@ pub enum Expr {
     BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
     UnaryOp(UnaryOpCode, Box<Expr>),
     Call(String, Vec<Box<Expr>>),
+    Identifier(String),
+    Subscription(Box<Expr>, Box<Expr>),
     Error,
 }
 
@@ -49,6 +51,10 @@ impl Debug for Expr {
             BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),
             Call(ref func, ref args) => write!(fmt, "Call(function: {}, arguments: {:?})", func, args),
+            Identifier(ref name) => write!(fmt, "Identifier({})", name),
+            Subscription(ref array_expr, ref subscript_expr) => {
+                write!(fmt, "Subscription(array_expr: {:?}, subscript_expr: {:?})", array_expr, subscript_expr)
+            }
             Error => write!(fmt, "error"),
         }
     }

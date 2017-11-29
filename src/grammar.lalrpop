@@ -28,7 +28,7 @@ ShiftExpr = Tier<ShiftOp, AExpr>;
 AExpr = Tier<AOp, MExpr>;
 MExpr = Tier<MOp, UExpr>;
 UExpr = UnaryTier<UOp, Primary>;
-Primary = {Call, Term};
+Primary = {Call, Subscription, Atom};
 
 Call: Box<Expr> = {
     <Identifier> "(" <ExpressionList> ")" => Box::new(Expr::Call(<>)),
@@ -49,6 +49,20 @@ Comma<T>: Vec<T> = {
             v
         }
     }
+};
+
+Subscription: Box<Expr> = {
+    <Primary> "[" <Expr> "]" => Box::new(Expr::Subscription(<>)),
+};
+
+Atom: Box<Expr> = {
+    IntegerLiteral => Box::new(Expr::Number(<>)),
+    Identifier => Box::new(Expr::Identifier(<>)),
+    "(" <Expr> ")"
+};
+
+IntegerLiteral: i32 = {
+    r"[0-9]+" => i32::from_str(<>).unwrap()
 };
 
 ComparisonOp: BinaryOpCode = {
@@ -87,13 +101,4 @@ UOp: UnaryOpCode = {
     "-" => UnaryOpCode::Neg,
     "+" => UnaryOpCode::Plus,
     "~" => UnaryOpCode::BitNot,
-};
-
-Term: Box<Expr> = {
-    IntegerLiteral => Box::new(Expr::Number(<>)),
-    "(" <Expr> ")"
-};
-
-IntegerLiteral: i32 = {
-    r"[0-9]+" => i32::from_str(<>).unwrap()
 };
