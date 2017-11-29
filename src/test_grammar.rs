@@ -96,3 +96,8 @@ fn array_literal() {
 fn character_literal() {
     test_expr!("'a'", "Char('a')")
 }
+
+#[test]
+fn string_literal() {
+    test_expr!("\"str\"", "String(\"str\")")
+}

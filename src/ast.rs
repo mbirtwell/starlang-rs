@@ -3,6 +3,7 @@ use std::fmt::{Debug, Formatter, Error};
 pub enum Expr {
     Number(i32),
     Char(char),
+    String(String),
     Array(Vec<Box<Expr>>),
     BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
     UnaryOp(UnaryOpCode, Box<Expr>),
@@ -45,12 +46,18 @@ pub enum UnaryOpCode {
     BoolNot,
 }
 
+pub fn extract_string_literal(token: &str) -> String {
+    let token_length = token.len();
+    return token.chars().skip(1).take(token_length - 2).collect()
+}
+
 impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expr::*;
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
             Char(c) => write!(fmt, "Char({:?})", c),
+            String(ref s) => write!(fmt, "String({:?})", s),
             Array(ref exprs) => write!(fmt, "Array({:?})", exprs),
             BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),

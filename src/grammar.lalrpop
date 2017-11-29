@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use ast::{Expr, BinaryOpCode, UnaryOpCode};
+use ast::{Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
 
 grammar;
 
@@ -51,6 +51,7 @@ Atom: Box<Expr> = {
     IntegerLiteral => Box::new(Expr::Number(<>)),
     ArrayLiteral => Box::new(Expr::Array(<>)),
     CharacterLiteral => Box::new(Expr::Char(<>)),
+    StringLiteral => Box::new(Expr::String(<>)),
     Identifier => Box::new(Expr::Identifier(<>)),
     "(" <Expr> ")"
 };
@@ -58,6 +59,7 @@ Atom: Box<Expr> = {
 IntegerLiteral: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();
 ArrayLiteral = "[" <ExpressionList> "]";
 CharacterLiteral: char = r"'[^']'" => <>.chars().nth(1).unwrap();
+StringLiteral: String = r#""[^"]*""# => extract_string_literal(<>);
 
 ComparisonOp: BinaryOpCode = {
     "<" => BinaryOpCode::LessThan,
