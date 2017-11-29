@@ -86,3 +86,13 @@ fn identifier_expr() {
 fn subscription() {
     test_expr!("array[1 + 2]", "Subscription(array_expr: Identifier(array), subscript_expr: BinaryOp(1 + 2))")
 }
+
+#[test]
+fn array_literal() {
+    test_expr!("[1, 2, var1]", "Array([1, 2, Identifier(var1)])")
+}
+
+#[test]
+fn character_literal() {
+    test_expr!("'a'", "Char('a')")
+}

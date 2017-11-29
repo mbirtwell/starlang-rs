@@ -2,6 +2,8 @@ use std::fmt::{Debug, Formatter, Error};
 
 pub enum Expr {
     Number(i32),
+    Char(char),
+    Array(Vec<Box<Expr>>),
     BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
     UnaryOp(UnaryOpCode, Box<Expr>),
     Call(String, Vec<Box<Expr>>),
@@ -48,6 +50,8 @@ impl Debug for Expr {
         use self::Expr::*;
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
+            Char(c) => write!(fmt, "Char({:?})", c),
+            Array(ref exprs) => write!(fmt, "Array({:?})", exprs),
             BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),
             Call(ref func, ref args) => write!(fmt, "Call(function: {}, arguments: {:?})", func, args),

@@ -57,12 +57,22 @@ Subscription: Box<Expr> = {
 
 Atom: Box<Expr> = {
     IntegerLiteral => Box::new(Expr::Number(<>)),
+    ArrayLiteral => Box::new(Expr::Array(<>)),
+    CharacterLiteral => Box::new(Expr::Char(<>)),
     Identifier => Box::new(Expr::Identifier(<>)),
     "(" <Expr> ")"
 };
 
 IntegerLiteral: i32 = {
     r"[0-9]+" => i32::from_str(<>).unwrap()
+};
+
+ArrayLiteral = {
+    "[" <ExpressionList> "]",
+};
+
+CharacterLiteral: char = {
+    r"'[^']'" => <>.chars().nth(1).unwrap(),
 };
 
 ComparisonOp: BinaryOpCode = {
