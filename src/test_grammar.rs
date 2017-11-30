@@ -127,3 +127,23 @@ fn assignment_statement() {
 fn declaration_statement() {
     test_stmt!("let var = 3;", "Declare(identifier: var, expr: 3)")
 }
+
+#[test]
+fn if_statemenet() {
+    test_stmt!(
+        "if a == 2 {
+            f();
+        }",
+        "If(test: BinaryOp(Identifier(a) == 2), block: [Expr(Call(function: f, arguments: []))])"
+    )
+}
+
+#[test]
+fn while_statemenet() {
+    test_stmt!(
+        "while a == 2 {
+            f();
+        }",
+        "While(test: BinaryOp(Identifier(a) == 2), block: [Expr(Call(function: f, arguments: []))])"
+    )
+}

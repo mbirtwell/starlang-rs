@@ -5,6 +5,8 @@ pub enum Statement {
     Return(Box<Expr>),
     Assign(Box<Expr>, Box<Expr>),
     Declare(String, Box<Expr>),
+    If(Box<Expr>, Vec<Box<Statement>>),
+    While(Box<Expr>, Vec<Box<Statement>>),
 }
 
 pub enum Expr {
@@ -66,6 +68,8 @@ impl Debug for Statement {
             Expr(ref expr) => write!(fmt, "Expr({:?})", expr),
             Assign(ref target, ref expr) => write!(fmt, "Assign(target: {:?}, expr: {:?})", target, expr),
             Declare(ref id, ref expr) => write!(fmt, "Declare(identifier: {}, expr: {:?})", id, expr),
+            If(ref test, ref block) => write!(fmt, "If(test: {:?}, block: {:?})", test, block),
+            While(ref test, ref block) => write!(fmt, "While(test: {:?}, block: {:?})", test, block)
         }
     }
 }
