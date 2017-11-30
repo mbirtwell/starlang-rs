@@ -7,6 +7,12 @@ macro_rules! test_expr {
     }
 }
 
+macro_rules! test_stmt {
+    ($text:expr, $ast:expr) => {
+        assert_eq!(&format!("{:?}", grammar::parse_Statement($text).unwrap()), $ast);
+    }
+}
+
 #[test]
 fn nested_add_mul_expr() {
     test_expr!("22* 44 + 66", "BinaryOp(BinaryOp(22 * 44) + 66)");
@@ -100,4 +106,24 @@ fn character_literal() {
 #[test]
 fn string_literal() {
     test_expr!("\"str\"", "String(\"str\")")
+}
+
+#[test]
+fn return_statement() {
+    test_stmt!("return 4;", "Return(4)")
+}
+
+#[test]
+fn expression_statement() {
+    test_stmt!("func(arr, 1);", "Expr(Call(function: func, arguments: [Identifier(arr), 1]))")
+}
+
+#[test]
+fn assignment_statement() {
+    test_stmt!("var = 2 + var2;", "Assign(target: Identifier(var), expr: BinaryOp(2 + Identifier(var2)))")
+}
+
+#[test]
+fn declaration_statement() {
+    test_stmt!("let var = 3;", "Declare(identifier: var, expr: 3)")
 }

@@ -1,7 +1,14 @@
 use std::str::FromStr;
-use ast::{Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
+use ast::{Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
 
 grammar;
+
+pub Statement = { <SimpleStatement> ";" };
+SimpleStatement = { Return, ExprStmt, Assign, Declare };
+Return: Box<Statement> = "return" <Expr> => Box::new(Statement::Return(<>));
+ExprStmt: Box<Statement> = <Expr> => Box::new(Statement::Expr(<>));
+Assign: Box<Statement> = <Expr> "=" <Expr> => Box::new(Statement::Assign(<>));
+Declare: Box<Statement> = "let" <Identifier> "=" <Expr> => Box::new(Statement::Declare(<>));
 
 Tier<Op,NextTier>: Box<Expr> = {
     Tier<Op,NextTier> Op NextTier => Box::new(Expr::BinaryOp(<>)),

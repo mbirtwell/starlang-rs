@@ -1,5 +1,12 @@
 use std::fmt::{Debug, Formatter, Error};
 
+pub enum Statement {
+    Expr(Box<Expr>),
+    Return(Box<Expr>),
+    Assign(Box<Expr>, Box<Expr>),
+    Declare(String, Box<Expr>),
+}
+
 pub enum Expr {
     Number(i32),
     Char(char),
@@ -49,6 +56,18 @@ pub enum UnaryOpCode {
 pub fn extract_string_literal(token: &str) -> String {
     let token_length = token.len();
     return token.chars().skip(1).take(token_length - 2).collect()
+}
+
+impl Debug for Statement {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::Statement::*;
+        match *self {
+            Return(ref expr) => write!(fmt, "Return({:?})", expr),
+            Expr(ref expr) => write!(fmt, "Expr({:?})", expr),
+            Assign(ref target, ref expr) => write!(fmt, "Assign(target: {:?}, expr: {:?})", target, expr),
+            Declare(ref id, ref expr) => write!(fmt, "Declare(identifier: {}, expr: {:?})", id, expr),
+        }
+    }
 }
 
 impl Debug for Expr {
