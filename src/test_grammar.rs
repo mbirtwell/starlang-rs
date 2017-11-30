@@ -147,3 +147,15 @@ fn while_statemenet() {
         "While(test: BinaryOp(Identifier(a) == 2), block: [Expr(Call(function: f, arguments: []))])"
     )
 }
+
+#[test]
+fn function_statement() {
+    let text = "\
+        function fname(arg1) {
+            return 1;
+        }
+    ";
+    let actual = &format!("{:?}", grammar::parse_Function(text).unwrap());
+    let expected = "Function(name: fname, arguments: [arg1], stmts: [Return(1)])";
+    assert_eq!(actual, expected);
+}

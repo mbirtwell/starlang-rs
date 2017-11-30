@@ -1,5 +1,18 @@
 use std::fmt::{Debug, Formatter, Error};
 
+
+pub struct Function {
+    name: String,
+    arguments: Vec<String>,
+    stmts: Vec<Box<Statement>>,
+}
+
+impl Function {
+    pub fn new(name: String, arguments: Vec<String>, stmts: Vec<Box<Statement>>) -> Function {
+        return Function {name: name, arguments: arguments, stmts: stmts};
+    }
+}
+
 pub enum Statement {
     Expr(Box<Expr>),
     Return(Box<Expr>),
@@ -58,6 +71,32 @@ pub enum UnaryOpCode {
 pub fn extract_string_literal(token: &str) -> String {
     let token_length = token.len();
     return token.chars().skip(1).take(token_length - 2).collect()
+}
+
+fn write_id_list(fmt: &mut Formatter, ids: &Vec<String>) -> Result<(), Error> {
+    use std::fmt::Write;
+    fmt.write_char('[')?;
+    let mut id_iter = ids.iter();
+    match id_iter.next() {
+        Some(ref s) => {
+            fmt.write_str(s)?;
+            for id in id_iter {
+                fmt.write_str(", ")?;
+                fmt.write_str(id)?;
+            }
+        },
+        None => (),
+    }
+    fmt.write_char(']')
+}
+
+impl Debug for Function {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        //write!(fmt, "Function(name: {}, arguments: {:?}, stmts: {:?})", self.name, self.arguments, self.stmts)
+        write!(fmt, "Function(name: {}, arguments: ", self.name)?;
+        write_id_list(fmt, &self.arguments)?;
+        write!(fmt, ", stmts: {:?})", self.stmts)
+    }
 }
 
 impl Debug for Statement {

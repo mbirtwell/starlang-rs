@@ -1,7 +1,9 @@
 use std::str::FromStr;
-use ast::{Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
+use ast::{Function, Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
 
 grammar;
+
+pub Function: Function = "function" <Identifier> "(" <Comma<Identifier>> ")" <Block> => Function::new(<>);
 
 pub Statement = { <SimpleStatement> ";", BlockStatement };
 SimpleStatement = { Return, ExprStmt, Assign, Declare };
