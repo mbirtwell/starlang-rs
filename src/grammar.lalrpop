@@ -3,6 +3,7 @@ use ast::{Function, Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_l
 
 grammar;
 
+pub Programme: Vec<Function> = <Function *>;
 pub Function: Function = "function" <Identifier> "(" <Comma<Identifier>> ")" <Block> => Function::new(<>);
 
 pub Statement = { <SimpleStatement> ";", BlockStatement };

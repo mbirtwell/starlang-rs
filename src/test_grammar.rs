@@ -149,7 +149,7 @@ fn while_statemenet() {
 }
 
 #[test]
-fn function_statement() {
+fn function_definition() {
     let text = "\
         function fname(arg1) {
             return 1;
@@ -157,5 +157,30 @@ fn function_statement() {
     ";
     let actual = &format!("{:?}", grammar::parse_Function(text).unwrap());
     let expected = "Function(name: fname, arguments: [arg1], stmts: [Return(1)])";
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn programme() {
+    let text = "\
+        function fname(arg1) {
+            return 1;
+        }
+
+        function main(args) {
+            let a = fname(args[0]);
+            return a + 1;
+        }
+    ";
+    let actual = &format!("{:?}", grammar::parse_Programme(text).unwrap());
+    let expected = "[\
+    Function(name: fname, arguments: [arg1], stmts: [Return(1)]), \
+    Function(name: main, arguments: [args], stmts: [\
+        Declare(identifier: a, expr: Call(function: fname, arguments: [Subscription(\
+            array_expr: Identifier(args), \
+            subscript_expr: 0\
+        )])), \
+        Return(BinaryOp(Identifier(a) + 1))\
+    ])]";
     assert_eq!(actual, expected);
 }
