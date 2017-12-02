@@ -2,9 +2,9 @@ use std::fmt::{Debug, Formatter, Error};
 
 
 pub struct Function {
-    name: String,
-    arguments: Vec<String>,
-    stmts: Vec<Box<Statement>>,
+    pub name: String,
+    pub arguments: Vec<String>,
+    pub stmts: Vec<Box<Statement>>,
 }
 
 impl Function {
