@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use super::ast;
 
+#[derive(Clone)]
 enum Value {
     Integer(i32),
     //Array(Rc<RefCell<[Value]>>),
@@ -36,6 +37,10 @@ trait Expr {
     fn evaluate(&self, locals: &Locals) -> Value;
 }
 
+trait LExpr {
+    fn evaluate<'a>(&self, locals: &'a mut Locals) -> &'a mut Value;
+}
+
 struct Return {
     expr: Box<Expr>,
 }
@@ -46,6 +51,18 @@ impl Statement for Return {
     }
 }
 
+struct Assign {
+    lexpr: Box<LExpr>,
+    rexpr: Box<Expr>,
+}
+
+impl Statement for Assign {
+    fn do_stmt(&self, locals: &mut Locals) -> FunctionState {
+        *self.lexpr.evaluate(locals) = self.rexpr.evaluate(locals);
+        FunctionState::NoReturn
+    }
+}
+
 struct IntegerLiteral {
     value: i32,
 }
@@ -53,6 +70,22 @@ struct IntegerLiteral {
 impl Expr for IntegerLiteral {
     fn evaluate(&self, locals: &Locals) -> Value {
         Value::Integer(self.value)
+    }
+}
+
+struct Identifier {
+    var_id: usize,
+}
+
+impl LExpr for Identifier {
+    fn evaluate<'a>(&self, locals: &'a mut Locals) -> &'a mut Value {
+        &mut locals.vars[self.var_id]
+    }
+}
+
+impl Expr for Identifier {
+    fn evaluate(&self, locals: &Locals) -> Value {
+        locals.vars[self.var_id].clone()
     }
 }
 
@@ -89,6 +122,32 @@ struct ScopeStack {
     max_locals: usize,
 }
 
+impl ScopeStack {
+    fn new() -> ScopeStack {
+        ScopeStack {scopes: vec![HashMap::new()], current_locals: 0, max_locals: 0}
+    }
+
+    fn declare(&mut self, name: &str) -> usize {
+        let rv = self.current_locals;
+        self.current_locals += 1;
+        if self.current_locals > self.max_locals {
+            self.max_locals = self.current_locals;
+        }
+        self.scopes.last_mut().unwrap().insert(name.to_string(), rv);
+        println!("Allocated local {} current {} max {}", rv, self.current_locals, self.max_locals);
+        rv
+    }
+
+    fn get(&self, name: &str) -> usize {
+        for scope in self.scopes.iter().rev() {
+            if let Some(idx) = scope.get(name) {
+                return *idx
+            }
+        }
+        panic!("Attempt to access varaible '{}' when not in scope", name)
+    }
+}
+
 fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     for func in programme {
         globals.funcs.insert(
@@ -105,15 +164,18 @@ fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
 
 fn build_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     for func in programme {
-        print!("Building function {:?}", func);
-        let stmts = build_func(globals, func);
-        globals.funcs[&func.name].borrow_mut().stmts = stmts;
+        println!("Building function {:?}", func);
+        let (stmts, max_locals) = build_func(globals, func);
+        let mut f = globals.funcs[&func.name].borrow_mut();
+        f.stmts = stmts;
+        f.max_locals = max_locals;
     }
 }
 
-fn build_func(globals: &Globals, func: &ast::Function) -> Vec<Box<Statement>> {
-    let mut scope_stack = ScopeStack {scopes: Vec::new(), current_locals: 0, max_locals: 0};
-    build_block(globals, &mut scope_stack, &func.stmts)
+fn build_func(globals: &Globals, func: &ast::Function) -> (Vec<Box<Statement>>, usize) {
+    let mut scope_stack = ScopeStack::new();
+    let stmts = build_block(globals, &mut scope_stack, &func.stmts);
+    (stmts, scope_stack.max_locals)
 }
 
 fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<Box<ast::Statement>>) -> Vec<Box<Statement>> {
@@ -121,23 +183,31 @@ fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<Box<
     for stmt in stmts {
         match **stmt {
             ast::Statement::Return(ref expr) => {
-                print!("Making Return of {:?}", expr);
-                rv.push(Box::new(Return {expr: build_expr(globals, expr)}))
+                println!("Making Return of {:?}", expr);
+                rv.push(Box::new(Return {expr: build_expr(globals, scope_stack, expr)}))
             },
+            ast::Statement::Declare(ref name, ref expr) => {
+                let var_id = scope_stack.declare(name);
+                rv.push(Box::new(Assign {
+                    lexpr: Box::new(Identifier {var_id: var_id}),
+                    rexpr: build_expr(globals, scope_stack, expr),
+                }))
+            }
             _ => panic!("Not implemented stmt for {:?}", stmt)
         }
     };
     rv
 }
 
-fn build_expr(globals: &Globals, expr: &ast::Expr) -> Box<Expr> {
+fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr) -> Box<Expr> {
     use ast::Expr::*;
     use ast::BinaryOpCode::*;
     match *expr {
         Number(n) => Box::new(IntegerLiteral { value: n }),
+        Identifier(ref name) => Box::new(self::Identifier {var_id: scope_stack.get(name)}),
         BinaryOp(ref l, op, ref r) => {
-            let lhs = build_expr(globals, l);
-            let rhs = build_expr(globals, r);
+            let lhs = build_expr(globals, scope_stack, l);
+            let rhs = build_expr(globals, scope_stack, r);
             macro_rules! int_op{
                 ( $op:tt ) => {
                     BinaryIntegerOp::new(lhs, rhs, |l, r| {l $op r})
@@ -178,7 +248,11 @@ pub fn exec(programme: &Vec<ast::Function>) -> i32 {
 }
 
 fn exec_func(func: &Function) -> Value {
+    println!("Making {} locals for function", func.max_locals);
     let mut locals = Locals { vars: Vec::with_capacity(func.max_locals) };
+    while locals.vars.len() < func.max_locals {
+        locals.vars.push(Value::Integer(0));
+    }
     match exec_block(&mut locals, &func.stmts) {
         FunctionState::Return(val) => val,
         FunctionState::NoReturn => Value::Integer(0),
@@ -266,6 +340,17 @@ mod tests {
             }
         ");
         assert_eq!(result.status_code, 0x6c);
+    }
+
+    #[test]
+    fn declare_and_reurn() {
+        let result = compile_and_run_programme("\
+            function main (args) {
+                let a = 42;
+                return a;
+            }
+        ");
+        assert_eq!(result.status_code, 42);
     }
 
 //    #[test]
