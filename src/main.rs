@@ -6,7 +6,7 @@ pub mod grammar;
 #[cfg(test)]
 mod test_grammar;
 
-mod pure_exec_tree;
+mod exec_tree;
 
 #[cfg(not(test))]
 fn main() {
