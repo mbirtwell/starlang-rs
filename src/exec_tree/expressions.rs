@@ -11,7 +11,13 @@ impl Expr for IntegerLiteral {
 }
 
 pub struct Identifier {
-    pub var_id: usize,
+    var_id: usize,
+}
+
+impl Identifier {
+    pub fn new(var_id: usize) -> Box<Identifier> {
+        Box::new(Identifier {var_id: var_id})
+    }
 }
 
 impl LExpr for Identifier {
@@ -58,7 +64,7 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
     use ast::BinaryOpCode::*;
     match *expr {
         Number(n) => Box::new(IntegerLiteral { value: n }),
-        Identifier(ref name) => Box::new(self::Identifier {var_id: scope_stack.get(name)}),
+        Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
         BinaryOp(ref l, op, ref r) => {
             let lhs = build_expr(globals, scope_stack, l);
             let rhs = build_expr(globals, scope_stack, r);
@@ -82,5 +88,13 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
             }
         }
         _ => panic!{"Not implemented expr for {:?} yet", expr}
+    }
+}
+
+pub fn build_lexpr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr) -> Box<LExpr> {
+    use ast::Expr::*;
+    match *expr {
+        Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
+        _ => panic!{"Not implemented or invalid l-expr for {:?} yet", expr}
     }
 }

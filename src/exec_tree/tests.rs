@@ -70,7 +70,7 @@ fn return_bit_manipulation() {
 }
 
 #[test]
-fn declare_and_reurn() {
+fn declare_and_return() {
     let result = compile_and_run_programme("\
             function main (args) {
                 let a = 42;
@@ -78,6 +78,18 @@ fn declare_and_reurn() {
             }
         ");
     assert_eq!(result.status_code, 42);
+}
+
+#[test]
+fn declare_update_and_return() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let a = 42;
+                a = a + 1;
+                return a;
+            }
+        ");
+    assert_eq!(result.status_code, 43);
 }
 
 //    #[test]

@@ -1,5 +1,5 @@
 use super::base::*;
-use super::expressions::{build_expr, Identifier};
+use super::expressions::{build_expr, build_lexpr, Identifier};
 
 struct Return {
     expr: Box<Expr>,
@@ -34,8 +34,14 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
             ast::Statement::Declare(ref name, ref expr) => {
                 let var_id = scope_stack.declare(name);
                 rv.push(Box::new(Assign {
-                    lexpr: Box::new(Identifier {var_id: var_id}),
+                    lexpr: Identifier::new(var_id),
                     rexpr: build_expr(globals, scope_stack, expr),
+                }))
+            },
+            ast::Statement::Assign(ref lexpr, ref rexpr) => {
+                rv.push(Box::new(Assign {
+                    lexpr: build_lexpr(globals, scope_stack, lexpr),
+                    rexpr: build_expr(globals, scope_stack, rexpr),
                 }))
             }
             _ => panic!("Not implemented stmt for {:?}", stmt)
