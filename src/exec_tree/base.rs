@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::{RefCell, Ref};
+//use std::rc::Rc;
+//use std::cell::RefCell;
 pub use super::super::ast;
 
 #[derive(Clone)]
@@ -10,42 +10,66 @@ pub enum Value {
 }
 
 pub struct Function {
-    pub name: String,
-    pub arguments: Vec<String>,
     pub stmts: Vec<Box<Statement>>,
     pub max_locals: usize,
 }
 
+#[derive(Copy,Clone)]
+pub struct FunctionId {
+    idx: usize,
+}
+
+struct FunctionDeclaration {
+    id: FunctionId,
+}
+
 pub struct Globals {
-    funcs: HashMap<String, Rc<RefCell<Function>>>,
+    function_declarations: HashMap<String, FunctionDeclaration>,
+    functions: Vec<Function>,
 }
 
 impl Globals {
     pub fn new() -> Globals {
-        Globals { funcs: HashMap::new() }
-    }
-    pub fn add_func(&mut self, func: &ast::Function) {
-        self.funcs.insert(
-            func.name.clone(),
-            Rc::new(RefCell::new(Function {
-                name: func.name.clone(),
-                arguments: func.arguments.clone(),
-                stmts: Vec::new(),
-                max_locals: 0,
-            })),
-        );
-    }
-    pub fn has_main(&self) -> bool { self.funcs.contains_key("main") }
-    pub fn get_main(&self) -> Ref<Function> {
-        match self.funcs.get("main") {
-            Some(ref func) => func.borrow(),
-            None => unreachable!(),
+        Globals {
+            function_declarations: HashMap::new(),
+            functions: Vec::new(),
         }
     }
+    pub fn declare_func(&mut self, func: &ast::Function) {
+        let id = FunctionId { idx: self.function_declarations.len() };
+        self.function_declarations.insert(
+            func.name.clone(),
+            FunctionDeclaration {
+                id: id,
+            },
+        );
+    }
+    pub fn has_main(&self) -> bool { self.function_declarations.contains_key("main") }
+    pub fn get_main(&self) -> &Function {
+        self.lookup_func(self.reference_func("main"))
+    }
     pub fn define_func(&mut self, name: &str, stmts: Vec<Box<Statement>>, max_locals: usize) {
-        let mut f = self.funcs[name].borrow_mut();
-        f.stmts = stmts;
-        f.max_locals = max_locals;
+        match self.function_declarations.get(name) {
+            Some(ref decl) => {
+                if self.functions.len() != decl.id.idx {
+                    panic!("Attempting to define function {} out of declaration order.", name)
+                }
+                self.functions.push(Function {
+                    stmts: stmts,
+                    max_locals: max_locals,
+                })
+            },
+            None => unreachable!("Attempting to define undeclared function {}", name),
+        }
+    }
+    pub fn reference_func(&self, name: &str) -> FunctionId {
+        match self.function_declarations.get(name) {
+            Some(ref decl) => decl.id,
+            None => panic!("Attempting to use undeclard function {}", name),
+        }
+    }
+    pub fn lookup_func(&self, func_id: FunctionId) -> &Function {
+        &self.functions[func_id.idx]
     }
 }
 
@@ -59,15 +83,15 @@ pub enum FunctionState {
 }
 
 pub trait Statement {
-    fn do_stmt(&self, locals: &mut Locals) -> FunctionState;
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState;
 }
 
 pub trait Expr {
-    fn evaluate(&self, locals: &Locals) -> Value;
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value;
 }
 
 pub trait LExpr {
-    fn evaluate<'a>(&self, locals: &'a mut Locals) -> &'a mut Value;
+    fn evaluate<'a>(&self, globals: &Globals, locals: &'a mut Locals) -> &'a mut Value;
 }
 
 pub struct ScopeStack {

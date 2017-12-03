@@ -6,8 +6,8 @@ struct Return {
 }
 
 impl Statement for Return {
-    fn do_stmt(&self, locals: &mut Locals) -> FunctionState {
-        FunctionState::Return(self.expr.evaluate(locals))
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+        FunctionState::Return(self.expr.evaluate(globals, locals))
     }
 }
 
@@ -17,8 +17,8 @@ struct Assign {
 }
 
 impl Statement for Assign {
-    fn do_stmt(&self, locals: &mut Locals) -> FunctionState {
-        *self.lexpr.evaluate(locals) = self.rexpr.evaluate(locals);
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+        *self.lexpr.evaluate(globals, locals) = self.rexpr.evaluate(globals, locals);
         FunctionState::NoReturn
     }
 }

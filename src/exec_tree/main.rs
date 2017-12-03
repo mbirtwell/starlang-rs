@@ -3,7 +3,7 @@ use super::statements::build_block;
 
 fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     for func in programme {
-        globals.add_func(func);
+        globals.declare_func(func);
     }
 }
 
@@ -30,27 +30,27 @@ pub fn exec(programme: &Vec<ast::Function>) -> i32 {
     build_funcs(&mut globals, programme);
     {
         let main_func = globals.get_main();
-        match exec_func(&main_func) {
+        match exec_func(&globals, &main_func) {
             Value::Integer(status_code) => status_code,
         }
     }
 }
 
-fn exec_func(func: &Function) -> Value {
+pub fn exec_func(globals: &Globals, func: &Function) -> Value {
     println!("Making {} locals for function", func.max_locals);
     let mut locals = Locals { vars: Vec::with_capacity(func.max_locals) };
     while locals.vars.len() < func.max_locals {
         locals.vars.push(Value::Integer(0));
     }
-    match exec_block(&mut locals, &func.stmts) {
+    match exec_block(globals, &mut locals, &func.stmts) {
         FunctionState::Return(val) => val,
         FunctionState::NoReturn => Value::Integer(0),
     }
 }
 
-fn exec_block(locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
+fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
     for stmt in stmts {
-        match stmt.do_stmt(locals) {
+        match stmt.do_stmt(globals, locals) {
             FunctionState::Return(val) => return FunctionState::Return(val),
             FunctionState::NoReturn => {},
         }

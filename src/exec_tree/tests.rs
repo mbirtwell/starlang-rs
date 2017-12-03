@@ -92,6 +92,19 @@ fn declare_update_and_return() {
     assert_eq!(result.status_code, 43);
 }
 
+#[test]
+fn function_call() {
+    let result = compile_and_run_programme("\
+            function f1() {
+                return 43;
+            }
+            function main (args) {
+                return f1();
+            }
+        ");
+    assert_eq!(result.status_code, 43);
+}
+
 //    #[test]
 //    fn comparisions() {
 //        let result = compile_and_run_programme("\

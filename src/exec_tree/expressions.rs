@@ -1,11 +1,12 @@
 use super::base::*;
+use super::main::{exec_func};
 
 struct IntegerLiteral {
     value: i32,
 }
 
 impl Expr for IntegerLiteral {
-    fn evaluate(&self, _locals: &Locals) -> Value {
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
         Value::Integer(self.value)
     }
 }
@@ -21,13 +22,13 @@ impl Identifier {
 }
 
 impl LExpr for Identifier {
-    fn evaluate<'a>(&self, locals: &'a mut Locals) -> &'a mut Value {
+    fn evaluate<'a>(&self, _globals: &Globals, locals: &'a mut Locals) -> &'a mut Value {
         &mut locals.vars[self.var_id]
     }
 }
 
 impl Expr for Identifier {
-    fn evaluate(&self, locals: &Locals) -> Value {
+    fn evaluate(&self, _globals: &Globals, locals: &Locals) -> Value {
         locals.vars[self.var_id].clone()
     }
 }
@@ -44,18 +45,29 @@ impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
     }
 }
 
-fn evaluate_to_int(locals: &Locals, expr: &Expr) -> i32 {
-    match expr.evaluate(locals) {
+fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &Expr) -> i32 {
+    match expr.evaluate(globals, locals) {
         Value::Integer(n) => n,
     }
 }
 
 impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
-    fn evaluate(&self, locals: &Locals) -> Value {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
         Value::Integer((self.func)(
-            evaluate_to_int(locals, &*self.lhs_expr),
-            evaluate_to_int(locals, &*self.rhs_expr),
+            evaluate_to_int(globals, locals, &*self.lhs_expr),
+            evaluate_to_int(globals, locals, &*self.rhs_expr),
         ))
+    }
+}
+
+struct Call {
+    func: FunctionId,
+    argument_exprs: Vec<Box<Expr>>,
+}
+
+impl Expr for Call {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+        exec_func(globals, globals.lookup_func(self.func))
     }
 }
 
@@ -86,7 +98,13 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
                 BitXor => int_op!(^),
                 _ => panic!("Not implemented op code for {:?}", op),
             }
-        }
+        },
+        Call(ref fname, ref argument_exprs) => {
+            Box::new(self::Call {
+                func: globals.reference_func(fname),
+                argument_exprs: Vec::new(),
+            })
+        },
         _ => panic!{"Not implemented expr for {:?} yet", expr}
     }
 }
