@@ -5,7 +5,7 @@ struct IntegerLiteral {
 }
 
 impl Expr for IntegerLiteral {
-    fn evaluate(&self, locals: &Locals) -> Value {
+    fn evaluate(&self, _locals: &Locals) -> Value {
         Value::Integer(self.value)
     }
 }

@@ -28,12 +28,11 @@ pub fn exec(programme: &Vec<ast::Function>) -> i32 {
         panic!("No main function defined");
     }
     build_funcs(&mut globals, programme);
-    let main_func = match globals.funcs.get("main") {
-        Some(ref func) => func.borrow(),
-        None => unreachable!(),
-    };
-    match exec_func(&main_func) {
-        Value::Integer(status_code) => status_code,
+    {
+        let main_func = globals.get_main();
+        match exec_func(&main_func) {
+            Value::Integer(status_code) => status_code,
+        }
     }
 }
 

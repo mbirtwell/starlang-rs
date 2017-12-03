@@ -17,7 +17,7 @@ pub struct Function {
 }
 
 pub struct Globals {
-    pub funcs: HashMap<String, Rc<RefCell<Function>>>,
+    funcs: HashMap<String, Rc<RefCell<Function>>>,
 }
 
 impl Globals {
