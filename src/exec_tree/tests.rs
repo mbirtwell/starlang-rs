@@ -105,6 +105,19 @@ fn function_call() {
     assert_eq!(result.status_code, 43);
 }
 
+#[test]
+fn function_with_arguments_call() {
+    let result = compile_and_run_programme("\
+            function f1(a) {
+                return a + 1;
+            }
+            function main (args) {
+                return f1(40) + 1;
+            }
+        ");
+    assert_eq!(result.status_code, 42);
+}
+
 //    #[test]
 //    fn comparisions() {
 //        let result = compile_and_run_programme("\

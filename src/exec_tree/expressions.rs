@@ -67,7 +67,11 @@ struct Call {
 
 impl Expr for Call {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        exec_func(globals, globals.lookup_func(self.func))
+        exec_func(
+            globals,
+            globals.lookup_func(self.func),
+            self.argument_exprs.iter().map(|ref expr| expr.evaluate(globals, locals)).collect(),
+        )
     }
 }
 
@@ -102,7 +106,9 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
         Call(ref fname, ref argument_exprs) => {
             Box::new(self::Call {
                 func: globals.reference_func(fname),
-                argument_exprs: Vec::new(),
+                argument_exprs: argument_exprs.iter().map(
+                    |ref expr| build_expr(globals, scope_stack, expr)
+                ).collect(),
             })
         },
         _ => panic!{"Not implemented expr for {:?} yet", expr}
