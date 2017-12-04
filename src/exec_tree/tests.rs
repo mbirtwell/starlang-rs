@@ -118,6 +118,18 @@ fn function_with_arguments_call() {
     assert_eq!(result.status_code, 42);
 }
 
+#[test]
+fn array_literal_and_subscription() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let a = [42];
+                return a[0];
+            }
+        ");
+    assert_eq!(result.status_code, 42);
+
+}
+
 //    #[test]
 //    fn comparisions() {
 //        let result = compile_and_run_programme("\

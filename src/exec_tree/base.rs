@@ -1,12 +1,14 @@
 use std::collections::HashMap;
-//use std::rc::Rc;
-//use std::cell::RefCell;
+use std::rc::Rc;
+use std::cell::RefCell;
 pub use super::super::ast;
+
+pub type Array = Rc<RefCell<Box<[Value]>>>;
 
 #[derive(Clone)]
 pub enum Value {
     Integer(i32),
-    //Array(Rc<RefCell<[Value]>>),
+    Array(Array),
 }
 
 pub struct Function {

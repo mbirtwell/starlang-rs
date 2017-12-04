@@ -35,6 +35,7 @@ pub fn exec(programme: &Vec<ast::Function>) -> i32 {
         let main_func = globals.get_main();
         match exec_func(&globals, &main_func, vec![Value::Integer(0)]) {
             Value::Integer(status_code) => status_code,
+            Value::Array(_) => panic!("Array returned from main. Requires int.")
         }
     }
 }
