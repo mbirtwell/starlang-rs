@@ -1,6 +1,4 @@
 use super::base::*;
-use std::rc::Rc;
-use std::cell::RefCell;
 use super::main::{exec_func};
 
 fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<Expr>]) -> Vec<Value> {
@@ -39,9 +37,7 @@ struct ArrayLiteral {
 
 impl Expr for ArrayLiteral {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Array(Rc::new(RefCell::new(
-            evaluate_expr_list(globals, locals, &self.value_exprs).into_boxed_slice()
-        )))
+        Value::from(evaluate_expr_list(globals, locals, &self.value_exprs))
     }
 }
 

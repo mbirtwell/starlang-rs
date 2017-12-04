@@ -11,6 +11,12 @@ pub enum Value {
     Array(Array),
 }
 
+impl From<Vec<Value>> for Value {
+    fn from(value: Vec<Value>) -> Value {
+        Value::Array(Rc::new(RefCell::new(value.into_boxed_slice())))
+    }
+}
+
 pub struct Function {
     pub stmts: Vec<Box<Statement>>,
     pub max_locals: usize,

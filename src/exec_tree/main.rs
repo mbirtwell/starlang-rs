@@ -24,7 +24,15 @@ fn build_func(globals: &Globals, func: &ast::Function) -> (Vec<Box<Statement>>, 
     (stmts, scope_stack.get_max_locals())
 }
 
-pub fn exec(programme: &Vec<ast::Function>) -> i32 {
+fn convert_args_to_values(args: Vec<String>) -> Value {
+    Value::from(args.iter().map(|arg| {
+        Value::from(arg.chars().map(|char| {
+            Value::Integer(char as i32)
+        }).collect::<Vec<_>>())
+    }).collect::<Vec<_>>())
+}
+
+pub fn exec(programme: &Vec<ast::Function>, args: Vec<String>) -> i32 {
     let mut globals = Globals::new();
     collect_funcs(&mut globals, programme);
     if !globals.has_main() {
@@ -33,7 +41,7 @@ pub fn exec(programme: &Vec<ast::Function>) -> i32 {
     build_funcs(&mut globals, programme);
     {
         let main_func = globals.get_main();
-        match exec_func(&globals, &main_func, vec![Value::Integer(0)]) {
+        match exec_func(&globals, &main_func, vec![convert_args_to_values(args)]) {
             Value::Integer(status_code) => status_code,
             Value::Array(_) => panic!("Array returned from main. Requires int.")
         }

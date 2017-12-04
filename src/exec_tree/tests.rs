@@ -6,8 +6,12 @@ struct ProgResult {
 }
 
 fn compile_and_run_programme(text: &str) -> ProgResult {
+    compile_and_run_programme_with_args(text, Vec::new())
+}
+
+fn compile_and_run_programme_with_args(text: &str, args: Vec<String>) -> ProgResult {
     let prog = parse_Programme(text).unwrap();
-    ProgResult { status_code: exec(&prog) }
+    ProgResult { status_code: exec(&prog, args) }
 }
 
 #[test]
@@ -139,6 +143,17 @@ fn assigning_to_a_subscript() {
             }
         ");
     assert_eq!(result.status_code, 84);
+}
+
+#[test]
+fn access_cmd_line_args() {
+    let result = compile_and_run_programme_with_args("\
+            function main (args) {
+                return args[0][0];
+            }
+        ", vec!["a".to_string()]);
+    assert_eq!(result.status_code, b'a' as i32)
+
 }
 
 //    #[test]
