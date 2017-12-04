@@ -127,7 +127,18 @@ fn array_literal_and_subscription() {
             }
         ");
     assert_eq!(result.status_code, 42);
+}
 
+#[test]
+fn assigning_to_a_subscript() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let a = [42];
+                a[0] = a[0] * 2;
+                return a[0];
+            }
+        ");
+    assert_eq!(result.status_code, 84);
 }
 
 //    #[test]

@@ -14,10 +14,12 @@ fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &Expr) -> i32 {
     }
 }
 
-fn evaluate_to_array(globals: &Globals, locals: &Locals, expr: &Expr) -> Array {
-    match expr.evaluate(globals, locals) {
-        Value::Integer(_) => panic!("Required array got int"),
-        Value::Array(ref array) => array.clone(),
+macro_rules! evaluate_to_array {
+    ($globals:expr, $locals:expr, $expr:expr, $ident:ident => $block:block) => {
+        match $expr.evaluate($globals, $locals) {
+            Value::Integer(_) => panic!("Required array got int"),
+            Value::Array(ref $ident) => $block,
+        }
     }
 }
 
@@ -54,8 +56,8 @@ impl Identifier {
 }
 
 impl LExpr for Identifier {
-    fn evaluate<'a>(&self, _globals: &Globals, locals: &'a mut Locals) -> &'a mut Value {
-        &mut locals.vars[self.var_id]
+    fn assign(&self, _globals: &Globals, locals: &mut Locals, value: Value) {
+        locals.vars[self.var_id] = value;
     }
 }
 
@@ -109,11 +111,20 @@ struct Subscription {
 impl Expr for Subscription {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
         let index = evaluate_to_int(globals, locals, &*self.index_expr);
-        let array = evaluate_to_array(globals, locals, &*self.array_expr);
-        {
+        evaluate_to_array!(globals, locals, self.array_expr, array => {
             let array_borrow = array.borrow();
             array_borrow[index as usize].clone()
-        }
+        })
+    }
+}
+
+impl LExpr for Subscription {
+    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value) {
+        let index = evaluate_to_int(globals, locals, &*self.index_expr);
+        evaluate_to_array!(globals, locals, self.array_expr, array => {
+            let mut array_borrow = array.borrow_mut();
+            array_borrow[index as usize] = value;
+        })
     }
 }
 
@@ -184,8 +195,19 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
 
 pub fn build_lexpr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr) -> Box<LExpr> {
     use ast::Expr::*;
+    macro_rules! expr{
+        ( $expr:expr ) => {
+            build_expr(globals, scope_stack, $expr)
+        }
+    }
     match *expr {
         Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
+        Subscription(ref array_expr, ref index_expr) => {
+            Box::new(self::Subscription {
+                array_expr: expr!(array_expr),
+                index_expr: expr!(index_expr),
+            })
+        }
         _ => panic!{"Not implemented or invalid l-expr for {:?} yet", expr}
     }
 }

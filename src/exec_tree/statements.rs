@@ -18,7 +18,8 @@ struct Assign {
 
 impl Statement for Assign {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        *self.lexpr.evaluate(globals, locals) = self.rexpr.evaluate(globals, locals);
+        let value = self.rexpr.evaluate(globals, locals);
+        self.lexpr.assign(globals, locals, value);
         FunctionState::NoReturn
     }
 }

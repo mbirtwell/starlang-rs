@@ -93,7 +93,7 @@ pub trait Expr {
 }
 
 pub trait LExpr {
-    fn evaluate<'a>(&self, globals: &Globals, locals: &'a mut Locals) -> &'a mut Value;
+    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value);
 }
 
 pub struct ScopeStack {
