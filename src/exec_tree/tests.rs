@@ -153,6 +153,18 @@ fn access_cmd_line_args() {
             }
         ", vec!["a".to_string()]);
     assert_eq!(result.status_code, b'a' as i32)
+}
+
+#[test]
+fn call_new_platform_func() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let a = new(3);
+                a[2] = 24;
+                return a[2] * 2;
+            }
+        ");
+    assert_eq!(result.status_code, 48);
 
 }
 

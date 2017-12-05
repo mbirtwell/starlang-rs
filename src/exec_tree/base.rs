@@ -17,9 +17,17 @@ impl From<Vec<Value>> for Value {
     }
 }
 
-pub struct Function {
-    pub stmts: Vec<Box<Statement>>,
-    pub max_locals: usize,
+pub trait Callable {
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value;
+}
+
+struct StarLangFunction {
+    stmts: Vec<Box<Statement>>,
+    max_locals: usize,
+}
+
+struct PlatformFunction {
+    func: Box<Fn(Vec<Value>) -> Value>,
 }
 
 #[derive(Copy,Clone)]
@@ -33,18 +41,31 @@ struct FunctionDeclaration {
 
 pub struct Globals {
     function_declarations: HashMap<String, FunctionDeclaration>,
-    functions: Vec<Function>,
+    functions: Vec<Box<Callable>>,
+}
+
+fn starlang_new(args: Vec<Value>) -> Value {
+    match args[0] {
+        Value::Integer(n) => {
+            Value::from(vec![Value::Integer(0); n as usize])
+        },
+        _ => {
+            panic!("platform function 'new' expected int but recieved array");
+        }
+    }
 }
 
 impl Globals {
     pub fn new() -> Globals {
-        Globals {
+        let mut rv = Globals {
             function_declarations: HashMap::new(),
             functions: Vec::new(),
-        }
+        };
+        rv.define_platform_func("new", Box::new(starlang_new));
+        rv
     }
     pub fn declare_func(&mut self, func: &ast::Function) {
-        let id = FunctionId { idx: self.function_declarations.len() };
+        let id = self.next_func_id();
         self.function_declarations.insert(
             func.name.clone(),
             FunctionDeclaration {
@@ -53,7 +74,7 @@ impl Globals {
         );
     }
     pub fn has_main(&self) -> bool { self.function_declarations.contains_key("main") }
-    pub fn get_main(&self) -> &Function {
+    pub fn get_main(&self) -> &Callable {
         self.lookup_func(self.reference_func("main"))
     }
     pub fn define_func(&mut self, name: &str, stmts: Vec<Box<Statement>>, max_locals: usize) {
@@ -62,10 +83,10 @@ impl Globals {
                 if self.functions.len() != decl.id.idx {
                     panic!("Attempting to define function {} out of declaration order.", name)
                 }
-                self.functions.push(Function {
+                self.functions.push(Box::new(StarLangFunction {
                     stmts: stmts,
                     max_locals: max_locals,
-                })
+                }))
             },
             None => unreachable!("Attempting to define undeclared function {}", name),
         }
@@ -76,8 +97,26 @@ impl Globals {
             None => panic!("Attempting to use undeclard function {}", name),
         }
     }
-    pub fn lookup_func(&self, func_id: FunctionId) -> &Function {
-        &self.functions[func_id.idx]
+    pub fn lookup_func(&self, func_id: FunctionId) -> &Callable {
+        &*self.functions[func_id.idx]
+    }
+    fn next_func_id(&self) -> FunctionId {
+        FunctionId { idx: self.function_declarations.len() }
+    }
+    fn define_platform_func(&mut self, name: &str, func: Box<Fn(Vec<Value>) -> Value>) {
+        let id = self.next_func_id();
+        self.function_declarations.insert(
+            name.to_string(),
+            FunctionDeclaration {
+                id: id,
+            },
+        );
+        if self.functions.len() != id.idx {
+            panic!("Attempting to define function {} out of declaration order.", name)
+        }
+        self.functions.push(Box::new(PlatformFunction {
+            func: func,
+        }))
     }
 }
 
@@ -135,5 +174,36 @@ impl ScopeStack {
 
     pub fn get_max_locals(&self) -> usize {
         self.max_locals
+    }
+}
+
+impl Callable for StarLangFunction {
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value {
+        let mut locals = Locals { vars: args };
+        locals.vars.reserve(self.max_locals);
+        while locals.vars.len() < self.max_locals {
+            locals.vars.push(Value::Integer(0));
+        }
+        match exec_block(globals, &mut locals, &self.stmts) {
+            FunctionState::Return(val) => val,
+            FunctionState::NoReturn => Value::Integer(0),
+        }
+
+    }
+}
+
+fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
+    for stmt in stmts {
+        match stmt.do_stmt(globals, locals) {
+            FunctionState::Return(val) => return FunctionState::Return(val),
+            FunctionState::NoReturn => {},
+        }
+    };
+    FunctionState::NoReturn
+}
+
+impl Callable for PlatformFunction {
+    fn call(&self, _globals: &Globals, args: Vec<Value>) -> Value {
+        (self.func)(args)
     }
 }

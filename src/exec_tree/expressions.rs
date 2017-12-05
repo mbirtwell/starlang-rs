@@ -1,5 +1,4 @@
 use super::base::*;
-use super::main::{exec_func};
 
 fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<Expr>]) -> Vec<Value> {
     exprs.iter().map(|ref expr| expr.evaluate(globals, locals)).collect()
@@ -91,10 +90,8 @@ struct Call {
 
 impl Expr for Call {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        exec_func(
-            globals,
-            globals.lookup_func(self.func),
-            evaluate_expr_list(globals, locals, &self.argument_exprs),
+        globals.lookup_func(self.func).call(
+            globals, evaluate_expr_list(globals, locals, &self.argument_exprs),
         )
     }
 }
