@@ -6,12 +6,20 @@ struct ProgResult {
 }
 
 fn compile_and_run_programme(text: &str) -> ProgResult {
-    compile_and_run_programme_with_args(text, Vec::new())
+    compile_and_run_programme_with_args_and_input(text, Vec::new(), &[])
 }
 
 fn compile_and_run_programme_with_args(text: &str, args: Vec<String>) -> ProgResult {
+    compile_and_run_programme_with_args_and_input(text, args, &[])
+}
+
+fn compile_and_run_programme_with_input(text: &str, input: &'static [u8]) -> ProgResult {
+    compile_and_run_programme_with_args_and_input(text, Vec::new(), input)
+}
+
+fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, input: &'static [u8]) -> ProgResult {
     let prog = parse_Programme(text).unwrap();
-    ProgResult { status_code: exec(&prog, args) }
+    ProgResult { status_code: exec(&prog, args, Box::new(input)), }
 }
 
 #[test]
@@ -165,6 +173,16 @@ fn call_new_platform_func() {
             }
         ");
     assert_eq!(result.status_code, 48);
+}
+
+#[test]
+fn call_getc_function_to_get_input() {
+    let result = compile_and_run_programme_with_input("\
+            function main (args) {
+                return getc();
+            }
+        ", b"a");
+    assert_eq!(result.status_code, b'a' as i32);
 
 }
 

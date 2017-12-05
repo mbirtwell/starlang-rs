@@ -1,3 +1,4 @@
+use std::io::{self,Read};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -27,7 +28,7 @@ struct StarLangFunction {
 }
 
 struct PlatformFunction {
-    func: Box<Fn(Vec<Value>) -> Value>,
+    func: Box<Fn(&Globals, Vec<Value>) -> Value>,
 }
 
 #[derive(Copy,Clone)]
@@ -42,9 +43,10 @@ struct FunctionDeclaration {
 pub struct Globals {
     function_declarations: HashMap<String, FunctionDeclaration>,
     functions: Vec<Box<Callable>>,
+    input: RefCell<io::Bytes<Box<io::Read>>>,
 }
 
-fn starlang_new(args: Vec<Value>) -> Value {
+fn starlang_new(_globals: &Globals, args: Vec<Value>) -> Value {
     match args[0] {
         Value::Integer(n) => {
             Value::from(vec![Value::Integer(0); n as usize])
@@ -55,13 +57,23 @@ fn starlang_new(args: Vec<Value>) -> Value {
     }
 }
 
+fn starlang_getc(globals: &Globals, _args: Vec<Value>) -> Value {
+    Value::Integer(
+        globals.input.borrow_mut().next().map(
+            |result| result.unwrap() as i32
+        ).unwrap_or(-1)
+    )
+}
+
 impl Globals {
-    pub fn new() -> Globals {
+    pub fn new(input: Box<io::Read>) -> Globals {
         let mut rv = Globals {
             function_declarations: HashMap::new(),
             functions: Vec::new(),
+            input: RefCell::new(input.bytes()),
         };
         rv.define_platform_func("new", Box::new(starlang_new));
+        rv.define_platform_func("getc", Box::new(starlang_getc));
         rv
     }
     pub fn declare_func(&mut self, func: &ast::Function) {
@@ -103,7 +115,7 @@ impl Globals {
     fn next_func_id(&self) -> FunctionId {
         FunctionId { idx: self.function_declarations.len() }
     }
-    fn define_platform_func(&mut self, name: &str, func: Box<Fn(Vec<Value>) -> Value>) {
+    fn define_platform_func(&mut self, name: &str, func: Box<Fn(&Globals, Vec<Value>) -> Value>) {
         let id = self.next_func_id();
         self.function_declarations.insert(
             name.to_string(),
@@ -203,7 +215,7 @@ fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) 
 }
 
 impl Callable for PlatformFunction {
-    fn call(&self, _globals: &Globals, args: Vec<Value>) -> Value {
-        (self.func)(args)
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value {
+        (self.func)(globals, args)
     }
 }
