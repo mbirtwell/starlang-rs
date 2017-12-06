@@ -43,7 +43,7 @@ struct FunctionDeclaration {
 pub struct Globals<'a> {
     function_declarations: HashMap<String, FunctionDeclaration>,
     functions: Vec<Box<Callable>>,
-    input: RefCell<io::Bytes<Box<io::Read>>>,
+    input: RefCell<io::Bytes<&'a mut io::Read>>,
     output: RefCell<&'a mut io::Write>,
 }
 
@@ -81,7 +81,7 @@ fn starlang_putc(globals: &Globals, args: Vec<Value>) -> Value {
 }
 
 impl<'b> Globals<'b> {
-    pub fn new<'a>(input: Box<io::Read>, output: &'a mut io::Write) -> Globals {
+    pub fn new<'a>(input: &'a mut io::Read, output: &'a mut io::Write) -> Globals<'a> {
         let mut rv = Globals {
             function_declarations: HashMap::new(),
             functions: Vec::new(),

@@ -18,11 +18,11 @@ fn compile_and_run_programme_with_input(text: &str, input: &'static [u8]) -> Pro
     compile_and_run_programme_with_args_and_input(text, Vec::new(), input)
 }
 
-fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, input: &'static [u8]) -> ProgResult {
+fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, mut input: &'static [u8]) -> ProgResult {
     let prog = parse_Programme(text).unwrap();
     let mut output = Vec::new();
     let status_code = {
-        exec(&prog, args, Box::new(input), &mut output)
+        exec(&prog, args, &mut input, &mut output)
     };
     ProgResult { status_code: status_code, output: output }
 }

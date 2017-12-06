@@ -33,7 +33,7 @@ fn convert_args_to_values(args: Vec<String>) -> Value {
     }).collect::<Vec<_>>())
 }
 
-pub fn exec(programme: &Vec<ast::Function>, args: Vec<String>, input: Box<Read>, output: &mut Write) -> i32 {
+pub fn exec(programme: &Vec<ast::Function>, args: Vec<String>, input: &mut Read, output: &mut Write) -> i32 {
     let mut globals = Globals::new(input, output);
     collect_funcs(&mut globals, programme);
     if !globals.has_main() {
