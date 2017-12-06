@@ -142,6 +142,7 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
     }
     match *expr {
         Number(n) => Box::new(IntegerLiteral { value: n }),
+        Char(c) => Box::new(IntegerLiteral {value: c as i32}),
         Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
         BinaryOp(ref l, op, ref r) => {
             let lhs = expr!(l);

@@ -40,10 +40,11 @@ struct FunctionDeclaration {
     id: FunctionId,
 }
 
-pub struct Globals {
+pub struct Globals<'a> {
     function_declarations: HashMap<String, FunctionDeclaration>,
     functions: Vec<Box<Callable>>,
     input: RefCell<io::Bytes<Box<io::Read>>>,
+    output: RefCell<&'a mut io::Write>,
 }
 
 fn starlang_new(_globals: &Globals, args: Vec<Value>) -> Value {
@@ -65,15 +66,31 @@ fn starlang_getc(globals: &Globals, _args: Vec<Value>) -> Value {
     )
 }
 
-impl Globals {
-    pub fn new(input: Box<io::Read>) -> Globals {
+fn starlang_putc(globals: &Globals, args: Vec<Value>) -> Value {
+    match args[0] {
+        Value::Integer(c) => {
+            let output = [c as u8];
+            globals.output.borrow_mut().write(&output).unwrap();
+            Value::Integer(0)
+        },
+        _ => {
+            panic!("platform function 'new' expected int but recieved array");
+        }
+    }
+
+}
+
+impl<'b> Globals<'b> {
+    pub fn new<'a>(input: Box<io::Read>, output: &'a mut io::Write) -> Globals {
         let mut rv = Globals {
             function_declarations: HashMap::new(),
             functions: Vec::new(),
             input: RefCell::new(input.bytes()),
+            output: RefCell::new(output),
         };
         rv.define_platform_func("new", Box::new(starlang_new));
         rv.define_platform_func("getc", Box::new(starlang_getc));
+        rv.define_platform_func("putc", Box::new(starlang_putc));
         rv
     }
     pub fn declare_func(&mut self, func: &ast::Function) {

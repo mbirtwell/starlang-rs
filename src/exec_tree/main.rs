@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read,Write};
 use super::base::*;
 use super::statements::build_block;
 
@@ -33,8 +33,8 @@ fn convert_args_to_values(args: Vec<String>) -> Value {
     }).collect::<Vec<_>>())
 }
 
-pub fn exec(programme: &Vec<ast::Function>, args: Vec<String>, input: Box<Read>) -> i32 {
-    let mut globals = Globals::new(input);
+pub fn exec(programme: &Vec<ast::Function>, args: Vec<String>, input: Box<Read>, output: &mut Write) -> i32 {
+    let mut globals = Globals::new(input, output);
     collect_funcs(&mut globals, programme);
     if !globals.has_main() {
         panic!("No main function defined");

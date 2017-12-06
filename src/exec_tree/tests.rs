@@ -3,6 +3,7 @@ use super::super::grammar::parse_Programme;
 
 struct ProgResult {
     status_code: i32,
+    output: Vec<u8>,
 }
 
 fn compile_and_run_programme(text: &str) -> ProgResult {
@@ -19,7 +20,11 @@ fn compile_and_run_programme_with_input(text: &str, input: &'static [u8]) -> Pro
 
 fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, input: &'static [u8]) -> ProgResult {
     let prog = parse_Programme(text).unwrap();
-    ProgResult { status_code: exec(&prog, args, Box::new(input)), }
+    let mut output = Vec::new();
+    let status_code = {
+        exec(&prog, args, Box::new(input), &mut output)
+    };
+    ProgResult { status_code: status_code, output: output }
 }
 
 #[test]
@@ -183,6 +188,16 @@ fn call_getc_function_to_get_input() {
             }
         ", b"a");
     assert_eq!(result.status_code, b'a' as i32);
+}
+
+#[test]
+fn call_putc_to_produce_output() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                putc('a');
+            }
+        ");
+    assert_eq!(result.output, b"a");
 
 }
 
