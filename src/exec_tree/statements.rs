@@ -1,5 +1,5 @@
 use super::base::*;
-use super::expressions::{build_expr, build_lexpr, Identifier};
+use super::expressions::{build_expr, build_lexpr, Identifier, evaluate_to_bool};
 
 struct Return {
     expr: Box<Expr>,
@@ -33,7 +33,37 @@ impl Statement for ExprStatement {
         self.expr.evaluate(globals, locals);
         FunctionState::NoReturn
     }
+}
 
+struct IfStatement {
+    expr: Box<Expr>,
+    stmts: Vec<Box<Statement>>,
+}
+
+impl Statement for IfStatement {
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+        if evaluate_to_bool(globals, locals, &*self.expr) {
+            exec_block(globals, locals, &self.stmts)
+        } else {
+            FunctionState::NoReturn
+        }
+    }
+}
+
+struct WhileStatement {
+    expr: Box<Expr>,
+    stmts: Vec<Box<Statement>>,
+}
+
+impl Statement for WhileStatement {
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+        while evaluate_to_bool(globals, locals, &*self.expr) {
+            if let FunctionState::Return(v) = exec_block(globals, locals, &self.stmts) {
+                return FunctionState::Return(v);
+            }
+        }
+        FunctionState::NoReturn
+    }
 }
 
 pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<Box<ast::Statement>>) -> Vec<Box<Statement>> {
@@ -46,6 +76,11 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
     macro_rules! stmt {
         ( $stmt:expr ) => {
             rv.push(Box::new($stmt))
+        };
+    }
+    macro_rules! block {
+        ( $stmts:expr ) => {
+            build_block(globals, scope_stack, $stmts)
         };
     }
     for stmt in stmts {
@@ -69,7 +104,12 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
             ast::Statement::Expr(ref expr) => {
                 stmt!(ExprStatement {expr: expr!(expr)})
             }
-            _ => panic!("Not implemented stmt for {:?}", stmt)
+            ast::Statement::If(ref expr, ref stmts) => {
+                stmt!(IfStatement {expr: expr!(expr), stmts: block!(stmts)})
+            }
+            ast::Statement::While(ref expr, ref stmts) => {
+                stmt!(WhileStatement {expr: expr!(expr), stmts: block!(stmts)})
+            }
         }
     };
     rv

@@ -253,3 +253,66 @@ test_bool_op!{bool_and_evaluates_both_sides_if_first_true, "f1(1) and f1(0)", 0,
 test_bool_op!{bool_or_evaluates_short_circuits_if_left_false, "f1(0) and f1(3)", 0, b"x"}
 test_bool_op!{bool_or_evaluates_is_not_nand, "f1(0) and f1(0)", 0, b"x"}
 
+
+#[test]
+fn if_statement() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                if 1 < 4 {
+                    putc('a');
+                }
+                if 1 > 4 {
+                    putc('b');
+                }
+            }
+        ");
+    assert_eq!(result.output, b"a");
+}
+
+#[test]
+fn if_statement_early_return() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                if 10 > 4 {
+                    return 10;
+                }
+                return 0;
+            }
+        ");
+    assert_eq!(result.status_code, 10);
+}
+
+#[test]
+fn while_statement() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let i = 0;
+                while i < 5 {
+                    putc('a' + i);
+                    i = i + 1;
+                }
+                return 0;
+            }
+        ");
+    assert_eq!(result.output, b"abcde");
+    assert_eq!(result.status_code, 0);
+}
+
+#[test]
+fn while_statement_early_return() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                let i = 0;
+                while i < 10 {
+                    putc('a' + i);
+                    i = i + 1;
+                    if i > 5 {
+                        return i;
+                    }
+                }
+                return 0;
+            }
+        ");
+    assert_eq!(result.output, b"abcdef");
+    assert_eq!(result.status_code, 6);
+}

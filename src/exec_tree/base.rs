@@ -6,7 +6,7 @@ pub use super::super::ast;
 
 pub type Array = Rc<RefCell<Box<[Value]>>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Integer(i32),
     Array(Array),
@@ -221,7 +221,7 @@ impl Callable for StarLangFunction {
     }
 }
 
-fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
+pub fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
     for stmt in stmts {
         match stmt.do_stmt(globals, locals) {
             FunctionState::Return(val) => return FunctionState::Return(val),

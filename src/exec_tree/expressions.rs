@@ -83,7 +83,7 @@ impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
     }
 }
 
-fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
+pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
     match expr.evaluate(globals, locals) {
         Value::Integer(n) => n != 0,
         Value::Array(_) => unimplemented!(),
