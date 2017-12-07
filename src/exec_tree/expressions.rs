@@ -83,6 +83,37 @@ impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
     }
 }
 
+fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
+    match expr.evaluate(globals, locals) {
+        Value::Integer(n) => n != 0,
+        Value::Array(_) => unimplemented!(),
+    }
+}
+
+struct BinaryBoolOp<FnT: Fn(bool) -> bool> {
+    lhs_expr: Box<Expr>,
+    rhs_expr: Box<Expr>,
+    should_return: FnT,
+}
+
+impl<FnT: Fn(bool) -> bool> BinaryBoolOp<FnT> {
+    fn helper(&self, globals: &Globals, locals: &Locals) -> bool {
+        let l = evaluate_to_bool(globals, locals, &*self.lhs_expr);
+        if (self.should_return)(l) {
+            l
+        } else {
+            evaluate_to_bool(globals, locals, &*self.rhs_expr)
+        }
+    }
+}
+
+impl<FnT: Fn(bool) -> bool> Expr for BinaryBoolOp<FnT> {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+        Value::Integer(if self.helper(globals, locals) {1} else {0})
+    }
+
+}
+
 struct Call {
     func: FunctionId,
     argument_exprs: Vec<Box<Expr>>,
@@ -147,10 +178,20 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
         BinaryOp(ref l, op, ref r) => {
             let lhs = expr!(l);
             let rhs = expr!(r);
-            macro_rules! int_op{
+            macro_rules! int_op {
                 ( $op:tt ) => {
                     BinaryIntegerOp::new(lhs, rhs, |l, r| {l $op r})
                 }
+            }
+            macro_rules! cmp_op {
+                ( $op:tt ) => {
+                    BinaryIntegerOp::new(lhs, rhs, |l, r| { if l $op r {1} else {0} })
+                };
+            }
+            macro_rules! bool_op {
+                ( $op:expr ) => {
+                    Box::new(BinaryBoolOp {lhs_expr: lhs, rhs_expr: rhs, should_return: $op})
+                };
             }
             match op {
                 Add => int_op!(+),
@@ -163,7 +204,14 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
                 BitOr => int_op!(|),
                 BitAnd => int_op!(&),
                 BitXor => int_op!(^),
-                _ => panic!("Not implemented op code for {:?}", op),
+                LessThan => cmp_op!(<),
+                MoreThan => cmp_op!(>),
+                LessThanOrEqual => cmp_op!(<=),
+                MoreThanOrEqual => cmp_op!(>=),
+                Equal => cmp_op!(==),
+                NotEqual => cmp_op!(!=),
+                BoolOr => bool_op!(|v| {v}),
+                BoolAnd => bool_op!(|v| {! v}),
             }
         },
         Call(ref fname, ref argument_exprs) => {

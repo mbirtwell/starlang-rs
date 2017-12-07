@@ -201,18 +201,55 @@ fn call_putc_to_produce_output() {
 
 }
 
-//    #[test]
-//    fn comparisions() {
-//        let result = compile_and_run_programme("\
-//            function main (args) {
-//                return
-//                    (1 < 3) << 0
-//                    (4 < 3) << 1
-//                    (4 > 3) << 2
-//                    (4 > 6) << 3
-//                    (4 > 6) << 3
-//                ;
-//            }
-//        ");
-//        assert_eq!(result.status_code, 0x6c);
-//    }
+#[test]
+fn comparisions() {
+    let result = compile_and_run_programme("\
+        function main (args) {
+            putc(1 < 3);
+            putc(4 < 3);
+            putc(4 > 3);
+            putc(4 > 6);
+            putc(4 <= 6);
+            putc(6 <= 6);
+            putc(8 <= 6);
+            putc(1 >= 0);
+            putc(1 >= 1);
+            putc(1 >= 2);
+            putc(10 == 10);
+            putc(10 == 11);
+            putc(10 != 10);
+            putc(10 != 11);
+        }
+    ");
+    assert_eq!(result.output, &[1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1]);
+}
+
+macro_rules! test_bool_op {
+    ( $test_name:ident, $expr:expr, $expected_status_code:expr, $expected_output:expr) => {
+        #[test]
+        fn $test_name() {
+            let result = compile_and_run_programme(concat!("\
+                    function f1(rv) {
+                        putc('x');
+                        return rv;
+                    }
+                    function main (args) {
+                        return ", $expr, ";
+                    }
+                "));
+            assert_eq!(result.status_code, $expected_status_code);
+            assert_eq!(result.output, $expected_output);
+        }
+    };
+}
+
+test_bool_op!{bool_or_evaluates_both_sides_if_false, "f1(0) or f1(0)", 0, b"xx"}
+test_bool_op!{bool_or_evaluates_both_sides_if_first_false, "f1(0) or f1(8)", 1, b"xx"}
+test_bool_op!{bool_or_evaluates_short_circuits_if_left_true, "f1(3) or f1(0)", 1, b"x"}
+test_bool_op!{bool_or_evaluates_is_not_xor, "f1(3) or f1(5)", 1, b"x"}
+
+test_bool_op!{bool_and_evaluates_both_sides_if_true, "f1(1) and f1(1)", 1, b"xx"}
+test_bool_op!{bool_and_evaluates_both_sides_if_first_true, "f1(1) and f1(0)", 0, b"xx"}
+test_bool_op!{bool_or_evaluates_short_circuits_if_left_false, "f1(0) and f1(3)", 0, b"x"}
+test_bool_op!{bool_or_evaluates_is_not_nand, "f1(0) and f1(0)", 0, b"x"}
+
