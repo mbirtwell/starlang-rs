@@ -77,7 +77,13 @@ fn starlang_putc(globals: &Globals, args: Vec<Value>) -> Value {
             panic!("platform function 'new' expected int but recieved array");
         }
     }
+}
 
+fn starlang_len(_globals: &Globals, args: Vec<Value>) -> Value {
+    Value::Integer(match args[0] {
+        Value::Integer(_) => -1,
+        Value::Array(ref array) => array.borrow().len() as i32,
+    })
 }
 
 impl<'b> Globals<'b> {
@@ -89,6 +95,7 @@ impl<'b> Globals<'b> {
             output: RefCell::new(output),
         };
         rv.define_platform_func("new", Box::new(starlang_new));
+        rv.define_platform_func("len", Box::new(starlang_len));
         rv.define_platform_func("getc", Box::new(starlang_getc));
         rv.define_platform_func("putc", Box::new(starlang_putc));
         rv

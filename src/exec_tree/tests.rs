@@ -316,3 +316,23 @@ fn while_statement_early_return() {
     assert_eq!(result.output, b"abcdef");
     assert_eq!(result.status_code, 6);
 }
+
+#[test]
+fn len_for_array_returns_array_length() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                return len(new(6));
+            }
+        ");
+    assert_eq!(result.status_code, 6);
+}
+
+#[test]
+fn len_for_int_returns_minus_1() {
+    let result = compile_and_run_programme("\
+            function main (args) {
+                return len(6);
+            }
+        ");
+    assert_eq!(result.status_code, -1);
+}
