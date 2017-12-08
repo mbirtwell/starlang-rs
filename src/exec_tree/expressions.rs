@@ -162,6 +162,27 @@ impl LExpr for Subscription {
     }
 }
 
+struct BoolNot {
+    expr: Box<Expr>,
+}
+
+impl Expr for BoolNot {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+        Value::Integer(if evaluate_to_bool(globals, locals, &*self.expr) {0} else {1})
+    }
+}
+
+struct UnaryIntegerOp<FnT: Fn(i32) -> i32> {
+    expr: Box<Expr>,
+    func: FnT,
+}
+
+impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+        Value::Integer((self.func)(evaluate_to_int(globals, locals, &*self.expr)))
+    }
+}
+
 fn build_expr_list(globals: &Globals, scope_stack: &ScopeStack, exprs: &[Box<ast::Expr>]) -> Vec<Box<Expr>> {
     exprs.iter().map(
         |ref expr| build_expr(globals, scope_stack, expr)
@@ -242,7 +263,22 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
                 index_expr: expr!(index_expr),
             })
         },
-        _ => panic!{"Not implemented expr for {:?} yet", expr}
+        UnaryOp(op, ref ast_expr) => {
+            use ast::UnaryOpCode::*;
+            let expr = expr!(ast_expr);
+            macro_rules! int_op {
+                ( $op:tt ) => {
+                    Box::new(UnaryIntegerOp { expr: expr, func: |v| {$op v} })
+                }
+            }
+            match op {
+                BoolNot => Box::new(self::BoolNot {expr:expr}),
+                BitNot => int_op!(!),
+                Neg => int_op!(-),
+                Plus => unimplemented!(),
+            }
+        },
+        Error => panic!("This really ought not have got this far"),
     }
 }
 

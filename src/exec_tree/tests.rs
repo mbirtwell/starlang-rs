@@ -36,55 +36,25 @@ fn noop_programme() {
     assert_eq!(result.status_code, 0);
 }
 
-#[test]
-fn main_return_status_code() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return 3;
-            }
-        ");
-    assert_eq!(result.status_code, 3);
+macro_rules! test_return_expr {
+    ( $test_name:ident, $expr:expr, $expected:expr ) => {
+        #[test]
+        fn $test_name() {
+            let result = compile_and_run_programme(concat!("\
+                function main (args) {
+                    return ", $expr, ";
+                }
+            "));
+            assert_eq!(result.status_code, $expected);
+        }
+    };
 }
 
-#[test]
-fn return_expression() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return 2 + 3;
-            }
-        ");
-    assert_eq!(result.status_code, 5);
-}
-
-#[test]
-fn return_more_maths() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return (2 * 5 - 1) % 5 ;
-            }
-        ");
-    assert_eq!(result.status_code, 4);
-}
-
-#[test]
-fn return_division() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return 5 / 2;
-            }
-        ");
-    assert_eq!(result.status_code, 2);
-}
-
-#[test]
-fn return_bit_manipulation() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return 1 << 2 | 64 >> 3 | 255 & 64 | 255 - 32 ^ 255;
-            }
-        ");
-    assert_eq!(result.status_code, 0x6c);
-}
+test_return_expr!{main_return_status_code, "3", 3}
+test_return_expr!{return_expression, "2 + 3", 5}
+test_return_expr!{return_more_maths, "(2 * 5 - 1) % 5", 4}
+test_return_expr!{return_division, "5 / 2", 2}
+test_return_expr!{return_bit_manipulation, "1 << 2 | 64 >> 3 | 255 & 64 | 255 - 32 ^ 255", 0x6c}
 
 #[test]
 fn declare_and_return() {
@@ -317,25 +287,8 @@ fn while_statement_early_return() {
     assert_eq!(result.status_code, 6);
 }
 
-#[test]
-fn len_for_array_returns_array_length() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return len(new(6));
-            }
-        ");
-    assert_eq!(result.status_code, 6);
-}
-
-#[test]
-fn len_for_int_returns_minus_1() {
-    let result = compile_and_run_programme("\
-            function main (args) {
-                return len(6);
-            }
-        ");
-    assert_eq!(result.status_code, -1);
-}
+test_return_expr!{len_for_array_returns_array_length, "len(new(6))", 6}
+test_return_expr!{len_for_int_returns_minus_1, "len(6)", -1}
 
 #[test]
 fn string_literal_definition() {
@@ -373,3 +326,9 @@ fn string_literal_mutability_and_independance() {
         "#);
     assert_eq!(result.output, b"xbcaxcabx");
 }
+
+test_return_expr!{bool_not_converts_positive_to_0, "not 5", 0}
+test_return_expr!{bool_not_converts_0_to_1, "not 0", 1}
+test_return_expr!{bit_not, "~345", -346}
+test_return_expr!{unary_neg, "-(2 + 3)", -5}
+//test_return_expr!{unary_plus, "+(2 + 3)", 5}
