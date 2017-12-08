@@ -336,3 +336,40 @@ fn len_for_int_returns_minus_1() {
         ");
     assert_eq!(result.status_code, -1);
 }
+
+#[test]
+fn string_literal_definition() {
+    let result = compile_and_run_programme(r#"
+            function main (args) {
+                let i = 0;
+                let s = "hello";
+                while i < len(s) {
+                    putc(s[i]);
+                    i = i + 1;
+                }
+                return 0;
+            }
+        "#);
+    assert_eq!(result.output, b"hello");
+}
+
+#[test]
+fn string_literal_mutability_and_independance() {
+    let result = compile_and_run_programme(r#"
+            function main (args) {
+                let i = 0;
+                while i < 3 {
+                    let s = "abc";
+                    let j = 0;
+                    s[i] = 'x';
+                    while j < len(s) {
+                        putc(s[j]);
+                        j = j + 1;
+                    }
+                    i = i + 1;
+                }
+                return 0;
+            }
+        "#);
+    assert_eq!(result.output, b"xbcaxcabx");
+}

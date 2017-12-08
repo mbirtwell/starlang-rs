@@ -30,6 +30,16 @@ impl Expr for IntegerLiteral {
     }
 }
 
+struct StringLiteral {
+    s: String,
+}
+
+impl Expr for StringLiteral {
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
+        Value::from(self.s.chars().map(|c| {Value::Integer(c as i32)}).collect::<Vec<_>>())
+    }
+}
+
 struct ArrayLiteral {
     value_exprs: Vec<Box<Expr>>
 }
@@ -174,6 +184,7 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
     match *expr {
         Number(n) => Box::new(IntegerLiteral { value: n }),
         Char(c) => Box::new(IntegerLiteral {value: c as i32}),
+        String(ref s) => Box::new(StringLiteral { s: s.clone() }),
         Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
         BinaryOp(ref l, op, ref r) => {
             let lhs = expr!(l);
@@ -230,7 +241,7 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
                 array_expr: expr!(array_expr),
                 index_expr: expr!(index_expr),
             })
-        }
+        },
         _ => panic!{"Not implemented expr for {:?} yet", expr}
     }
 }
