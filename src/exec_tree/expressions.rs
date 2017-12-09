@@ -11,6 +11,13 @@ fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &Expr) -> i32 {
     }
 }
 
+pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
+    match expr.evaluate(globals, locals) {
+        Value::Integer(n) => n != 0,
+        Value::Array(_) => unimplemented!(),
+    }
+}
+
 macro_rules! evaluate_to_array {
     ($globals:expr, $locals:expr, $expr:expr, $ident:ident => $block:block) => {
         match $expr.evaluate($globals, $locals) {
@@ -90,13 +97,6 @@ impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
             evaluate_to_int(globals, locals, &*self.lhs_expr),
             evaluate_to_int(globals, locals, &*self.rhs_expr),
         ))
-    }
-}
-
-pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
-    match expr.evaluate(globals, locals) {
-        Value::Integer(n) => n != 0,
-        Value::Array(_) => unimplemented!(),
     }
 }
 

@@ -10,7 +10,6 @@ fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
 
 fn build_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     for func in programme {
-        println!("Building function {:?}", func);
         let (stmts, max_locals) = build_func(globals, func);
         globals.define_func(&func.name, stmts, max_locals);
     }

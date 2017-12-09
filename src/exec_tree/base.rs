@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::io::{self,Read};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -86,6 +87,13 @@ fn starlang_len(_globals: &Globals, args: Vec<Value>) -> Value {
     })
 }
 
+fn starlang_exit(_globals: &Globals, args: Vec<Value>) -> Value {
+    match args[0] {
+        Value::Integer(n) => exit(n),
+        Value::Array(_) => panic!("exit called with array"),
+    }
+}
+
 impl<'b> Globals<'b> {
     pub fn new<'a>(input: &'a mut io::Read, output: &'a mut io::Write) -> Globals<'a> {
         let mut rv = Globals {
@@ -98,6 +106,7 @@ impl<'b> Globals<'b> {
         rv.define_platform_func("len", Box::new(starlang_len));
         rv.define_platform_func("getc", Box::new(starlang_getc));
         rv.define_platform_func("putc", Box::new(starlang_putc));
+        rv.define_platform_func("exit", Box::new(starlang_exit));
         rv
     }
     pub fn declare_func(&mut self, func: &ast::Function) {
@@ -195,7 +204,6 @@ impl ScopeStack {
             self.max_locals = self.current_locals;
         }
         self.scopes.last_mut().unwrap().insert(name.to_string(), rv);
-        println!("Allocated local {} current {} max {}", rv, self.current_locals, self.max_locals);
         rv
     }
 
