@@ -183,7 +183,7 @@ impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
     }
 }
 
-fn build_expr_list(globals: &Globals, scope_stack: &ScopeStack, exprs: &[Box<ast::Expr>]) -> Vec<Box<Expr>> {
+fn build_expr_list(globals: &Globals, scope_stack: &ScopeStack, exprs: &[ast::Expr]) -> Vec<Box<Expr>> {
     exprs.iter().map(
         |ref expr| build_expr(globals, scope_stack, expr)
     ).collect()

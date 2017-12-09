@@ -66,7 +66,7 @@ impl Statement for WhileStatement {
     }
 }
 
-pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<Box<ast::Statement>>) -> Vec<Box<Statement>> {
+pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<ast::Statement>) -> Vec<Box<Statement>> {
     let mut rv: Vec<Box<Statement>> = Vec::with_capacity(stmts.len());
     macro_rules! expr{
         ( $expr:expr ) => {
@@ -84,7 +84,7 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
         };
     }
     for stmt in stmts {
-        match **stmt {
+        match *stmt {
             ast::Statement::Return(ref expr) => {
                 stmt!(Return {expr: expr!(expr)})
             },

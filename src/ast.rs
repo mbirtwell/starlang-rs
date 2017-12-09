@@ -4,35 +4,47 @@ use std::fmt::{Debug, Formatter, Error};
 pub struct Function {
     pub name: String,
     pub arguments: Vec<String>,
-    pub stmts: Vec<Box<Statement>>,
+    pub stmts: Vec<Statement>,
 }
 
 impl Function {
-    pub fn new(name: String, arguments: Vec<String>, stmts: Vec<Box<Statement>>) -> Function {
+    pub fn new(name: String, arguments: Vec<String>, stmts: Vec<Statement>) -> Function {
         return Function {name: name, arguments: arguments, stmts: stmts};
     }
 }
 
 pub enum Statement {
-    Expr(Box<Expr>),
-    Return(Box<Expr>),
-    Assign(Box<Expr>, Box<Expr>),
-    Declare(String, Box<Expr>),
-    If(Box<Expr>, Vec<Box<Statement>>),
-    While(Box<Expr>, Vec<Box<Statement>>),
+    Expr(Expr),
+    Return(Expr),
+    Assign(Expr, Expr),
+    Declare(String, Expr),
+    If(Expr, Vec<Statement>),
+    While(Expr, Vec<Statement>),
 }
 
 pub enum Expr {
     Number(i32),
     Char(char),
     String(String),
-    Array(Vec<Box<Expr>>),
+    Array(Vec<Expr>),
     BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
     UnaryOp(UnaryOpCode, Box<Expr>),
-    Call(String, Vec<Box<Expr>>),
+    Call(String, Vec<Expr>),
     Identifier(String),
     Subscription(Box<Expr>, Box<Expr>),
     Error,
+}
+
+impl Expr {
+    pub fn new_binary_op(lhs: Expr, op: BinaryOpCode, rhs: Expr) -> Expr {
+        Expr::BinaryOp(Box::new(lhs), op, Box::new(rhs))
+    }
+    pub fn new_unary_op(op: UnaryOpCode, expr: Expr) -> Expr {
+        Expr::UnaryOp(op, Box::new(expr))
+    }
+    pub fn new_subscription(array_expr: Expr, subscript_expr: Expr) -> Expr {
+        Expr::Subscription(Box::new(array_expr), Box::new(subscript_expr))
+    }
 }
 
 #[derive(Copy, Clone)]

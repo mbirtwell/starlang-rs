@@ -8,24 +8,24 @@ pub Function: Function = "function" <Identifier> "(" <Comma<Identifier>> ")" <Bl
 
 pub Statement = { <SimpleStatement> ";", BlockStatement };
 SimpleStatement = { Return, ExprStmt, Assign, Declare };
-Return: Box<Statement> = "return" <Expr> => Box::new(Statement::Return(<>));
-ExprStmt: Box<Statement> = <Expr> => Box::new(Statement::Expr(<>));
-Assign: Box<Statement> = <Expr> "=" <Expr> => Box::new(Statement::Assign(<>));
-Declare: Box<Statement> = "let" <Identifier> "=" <Expr> => Box::new(Statement::Declare(<>));
+Return: Statement = "return" <Expr> => Statement::Return(<>);
+ExprStmt: Statement = <Expr> => Statement::Expr(<>);
+Assign: Statement = <Expr> "=" <Expr> => Statement::Assign(<>);
+Declare: Statement = "let" <Identifier> "=" <Expr> => Statement::Declare(<>);
 BlockStatement = {If, While};
-If: Box<Statement> = "if" <Expr> <Block> => Box::new(Statement::If(<>));
-While: Box<Statement> = "while" <Expr> <Block> => Box::new(Statement::While(<>));
-Block: Vec<Box<Statement>> = {
+If: Statement = "if" <Expr> <Block> => Statement::If(<>);
+While: Statement = "while" <Expr> <Block> => Statement::While(<>);
+Block: Vec<Statement> = {
     "{" <Statement *> "}"
 };
 
-Tier<Op,NextTier>: Box<Expr> = {
-    Tier<Op,NextTier> Op NextTier => Box::new(Expr::BinaryOp(<>)),
+Tier<Op,NextTier>: Expr = {
+    Tier<Op,NextTier> Op NextTier => Expr::new_binary_op(<>),
     NextTier
 };
 
-UnaryTier<Op, NextTier>: Box<Expr> = {
-    Op UnaryTier<Op, NextTier> => Box::new(Expr::UnaryOp(<>)),
+UnaryTier<Op, NextTier>: Expr = {
+    Op UnaryTier<Op, NextTier> => Expr::new_unary_op(<>),
     NextTier,
 };
 
@@ -45,7 +45,7 @@ OrTest = Tier<BoolOrOp, AndTest>;
 AndTest = Tier<BoolAndOp, NotTest>;
 NotTest = UnaryTier<BoolNotOp, ComparisonExpr>;
 ComparisonExpr = {
-    OrExpr ComparisonOp OrExpr => Box::new(Expr::BinaryOp(<>)),
+    OrExpr ComparisonOp OrExpr => Expr::new_binary_op(<>),
     OrExpr,
 };
 OrExpr = Tier<BitOrOp, XorExpr>;
@@ -57,18 +57,18 @@ MExpr = Tier<MOp, UExpr>;
 UExpr = UnaryTier<UOp, Primary>;
 
 Primary = {Call, Subscription, Atom};
-Call: Box<Expr> = <Identifier> "(" <ExpressionList> ")" => Box::new(Expr::Call(<>));
+Call: Expr = <Identifier> "(" <ExpressionList> ")" => Expr::Call(<>);
 Identifier: String = r"[a-zA-Z_]\w*" => <>.to_string();
 ExpressionList = Comma<Expr>;
 
-Subscription: Box<Expr> = <Primary> "[" <Expr> "]" => Box::new(Expr::Subscription(<>));
+Subscription: Expr = <Primary> "[" <Expr> "]" => Expr::new_subscription(<>);
 
-Atom: Box<Expr> = {
-    IntegerLiteral => Box::new(Expr::Number(<>)),
-    ArrayLiteral => Box::new(Expr::Array(<>)),
-    CharacterLiteral => Box::new(Expr::Char(<>)),
-    StringLiteral => Box::new(Expr::String(<>)),
-    Identifier => Box::new(Expr::Identifier(<>)),
+Atom: Expr = {
+    IntegerLiteral => Expr::Number(<>),
+    ArrayLiteral => Expr::Array(<>),
+    CharacterLiteral => Expr::Char(<>),
+    StringLiteral => Expr::String(<>),
+    Identifier => Expr::Identifier(<>),
     "(" <Expr> ")"
 };
 
