@@ -71,10 +71,15 @@ impl Location {
     }
 }
 
-enum FindTokenStartResult {
-    WholeToken(Tok,usize),
-    PunctuationStart(usize),
-    NumberStart(usize),
+struct FindTokenStartResult {
+    offset: usize,
+    state: FindTokenStartState,
+}
+
+enum FindTokenStartState {
+    WholeToken(Tok),
+    PunctuationStart,
+    NumberStart,
     EndOfFile,
 }
 
@@ -93,12 +98,17 @@ impl<'input> Matcher<'input> {
 
     fn find_token_start(&mut self) -> FindTokenStartResult {
         use self::Tok::*;
-        use self::FindTokenStartResult::*;
+        use self::FindTokenStartState::*;
 //        let mut expect_line_feed = false;
         for (offset, c) in self.text.char_indices() {
+            macro_rules! result {
+                ( $state:expr ) => {
+                    return FindTokenStartResult { offset: offset, state: $state }
+                }
+            }
             macro_rules! wt {
                 ( $t:ident) => {
-                    return WholeToken($t, offset)
+                    result!(WholeToken($t))
                 }
             }
             match c {
@@ -121,14 +131,14 @@ impl<'input> Matcher<'input> {
                 '*' => wt!(Asterisk),
                 '%' => wt!(Percent),
                 '/' => wt!(ForwardSlash),
-                '='|'<'|'>'|'!' => return PunctuationStart(offset),
-                '0'...'9' => return NumberStart(offset),
+                '='|'<'|'>'|'!' => result!(PunctuationStart),
+                '0'...'9' => result!(NumberStart),
                 _ => {
                     panic!("IllegalChar");
                 }
             }
         }
-        EndOfFile
+        FindTokenStartResult { offset: self.text.len(), state: EndOfFile }
     }
     fn consume(&mut self, bytes: usize) {
         self.location.file_offset_bytes += bytes;
@@ -193,23 +203,14 @@ impl<'input> Iterator for Matcher<'input> {
     type Item = MatcherItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use self::FindTokenStartResult::*;
-        match self.find_token_start() {
-            WholeToken(token, offset) => {
-                self.location.file_offset_bytes += offset;
-                self.text = &self.text[offset..];
-                Some(self.token(token, 1))
-            },
-            PunctuationStart(offset) => {
-                self.location.file_offset_bytes += offset;
-                self.text = &self.text[offset..];
-                Some(self.extract_punctuation())
-            },
-            NumberStart(offset) => {
-                self.location.file_offset_bytes += offset;
-                self.text = &self.text[offset..];
-                Some(self.extract_number())
-            }
+        use self::FindTokenStartState::*;
+        let token_start = self.find_token_start();
+        self.location.file_offset_bytes += token_start.offset;
+        self.text = &self.text[token_start.offset..];
+        match token_start.state {
+            WholeToken(token) => Some(self.token(token, 1)),
+            PunctuationStart => Some(self.extract_punctuation()),
+            NumberStart => Some(self.extract_number()),
             EndOfFile => None,
         }
     }
