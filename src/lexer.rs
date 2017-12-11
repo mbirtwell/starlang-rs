@@ -287,4 +287,9 @@ mod tests {
     test_lex!{extract_integer, "123", vec![
         tok(Integer(123), 1, 0, 0, 3),
     ]}
+    test_lex!{extract_integer_2, "923 - 03", vec![
+        tok(Integer(923), 1, 0, 0, 3),
+        tok(Minus, 1, 4, 4, 1),
+        tok(Integer(3), 1, 6, 6, 2),
+    ]}
 }
