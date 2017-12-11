@@ -3,6 +3,47 @@ use ast::{Function, Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_l
 
 grammar;
 
+match {
+    r"[0-9]+" => INTEGER,
+    r"[a-zA-Z_]\w*" => IDENTIFIER,
+    r"'[^']'" => CHAR,
+    r#""[^"]*""# => STRING,
+    "function",
+    "return",
+    "let",
+    "if",
+    "while",
+    "(",
+    ")",
+    "{",
+    "}",
+    "]",
+    "[",
+    ";",
+    ",",
+    "=",
+    "==",
+    "<",
+    "<=",
+    "<<",
+    ">",
+    ">=",
+    ">>",
+    "!=",
+    "&",
+    "|",
+    "^",
+    "and",
+    "or",
+    "not",
+    "+",
+    "-",
+    "~",
+    "*",
+    "%",
+    "/",
+}
+
 pub Programme: Vec<Function> = <Function *>;
 pub Function: Function = "function" <Identifier> "(" <Comma<Identifier>> ")" <Block> => Function::new(<>);
 
@@ -58,7 +99,7 @@ UExpr = UnaryTier<UOp, Primary>;
 
 Primary = {Call, Subscription, Atom};
 Call: Expr = <Identifier> "(" <ExpressionList> ")" => Expr::Call(<>);
-Identifier: String = r"[a-zA-Z_]\w*" => <>.to_string();
+Identifier: String = IDENTIFIER => <>.to_string();
 ExpressionList = Comma<Expr>;
 
 Subscription: Expr = <Primary> "[" <Expr> "]" => Expr::new_subscription(<>);
@@ -72,10 +113,10 @@ Atom: Expr = {
     "(" <Expr> ")"
 };
 
-IntegerLiteral: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();
+IntegerLiteral: i32 = INTEGER => i32::from_str(<>).unwrap();
 ArrayLiteral = "[" <ExpressionList> "]";
-CharacterLiteral: char = r"'[^']'" => <>.chars().nth(1).unwrap();
-StringLiteral: String = r#""[^"]*""# => extract_string_literal(<>);
+CharacterLiteral: char = CHAR => <>.chars().nth(1).unwrap();
+StringLiteral: String = STRING => extract_string_literal(<>);
 
 ComparisonOp: BinaryOpCode = {
     "<" => BinaryOpCode::LessThan,
