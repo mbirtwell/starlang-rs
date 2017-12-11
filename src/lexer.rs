@@ -1,11 +1,11 @@
 
 #[derive(PartialEq, Debug)]
-pub enum Tok {
+pub enum Tok<'input> {
 //    Identifier(String),
     // Literals
     Integer(i32),
-//    Char(char),
-//    String(String),
+    Char(char),
+    String(&'input str),
     // Key words
 //    Function,
 //    Return,
@@ -71,15 +71,17 @@ impl Location {
     }
 }
 
-struct FindTokenStartResult {
+struct FindTokenStartResult<'input> {
     offset: usize,
-    state: FindTokenStartState,
+    state: FindTokenStartState<'input>,
 }
 
-enum FindTokenStartState {
-    WholeToken(Tok),
+enum FindTokenStartState<'input> {
+    WholeToken(Tok<'input>),
     PunctuationStart,
     NumberStart,
+    CharStart,
+    StringStart,
     EndOfFile,
 }
 
@@ -96,7 +98,7 @@ impl<'input> Matcher<'input> {
         }
     }
 
-    fn find_token_start(&mut self) -> FindTokenStartResult {
+    fn find_token_start(&mut self) -> FindTokenStartResult<'input> {
         use self::Tok::*;
         use self::FindTokenStartState::*;
 //        let mut expect_line_feed = false;
@@ -133,6 +135,8 @@ impl<'input> Matcher<'input> {
                 '/' => wt!(ForwardSlash),
                 '='|'<'|'>'|'!' => result!(PunctuationStart),
                 '0'...'9' => result!(NumberStart),
+                '\'' => result!(CharStart),
+                '"' => result!(StringStart),
                 _ => {
                     panic!("IllegalChar");
                 }
@@ -145,12 +149,12 @@ impl<'input> Matcher<'input> {
         self.location.line_offset_chars += bytes;
         self.text = &self.text[bytes..];
     }
-    fn token(&mut self, token: Tok, size: usize) -> MatcherItem {
+    fn token(&mut self, token: Tok<'input>, size: usize) -> <Self as Iterator>::Item {
         let start = self.location;
         self.consume(size);
         Ok((start, token, self.location))
     }
-    fn extract_punctuation(&mut self) -> MatcherItem {
+    fn extract_punctuation(&mut self) -> <Self as Iterator>::Item {
         use self::Tok::*;
         let mut chars = self.text.chars();
         macro_rules! second_char {
@@ -189,18 +193,44 @@ impl<'input> Matcher<'input> {
             None => unreachable!(),
         }
     }
-    fn extract_number(&mut self) -> MatcherItem {
+    fn extract_number(&mut self) -> <Self as Iterator>::Item {
         use std::str::FromStr;
         let number_length = self.text.find(|c| {c < '0' || c > '9'}).unwrap_or(self.text.len());
         let tok = Tok::Integer(i32::from_str(&self.text[..number_length]).unwrap());
         self.token(tok, number_length)
     }
+    fn extract_char(&mut self) -> <Self as Iterator>::Item {
+        let mut chars = self.text.chars();
+        if chars.next() != Some('\'') {
+            unreachable!();
+        }
+        let c = match chars.next() {
+            Some(c) => c,
+            None => panic!("EOF in char literal"),
+        };
+        match chars.next() {
+            Some('\'') => {},
+            Some(_) => panic!("Bad char literal"),
+            None => panic!("EOF in char literal"),
+        }
+        let tok = Tok::Char(c);
+        self.token(tok, 3)
+    }
+    fn extract_string(&mut self) -> <Self as Iterator>::Item {
+        // TODO will break on unicode
+        if let Some(string_length) = self.text[1..].find('"') {
+            let s = &self.text[1..string_length + 1];
+            self.token(Tok::String(s), string_length + 2)
+        } else {
+            panic!("EOF in string");
+        }
+    }
 }
 
-type MatcherItem = Result<(Location, Tok, Location), Error>;
+type MatcherItem<'input> = Result<(Location, Tok<'input>, Location), Error>;
 
 impl<'input> Iterator for Matcher<'input> {
-    type Item = MatcherItem;
+    type Item = MatcherItem<'input>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use self::FindTokenStartState::*;
@@ -211,6 +241,8 @@ impl<'input> Iterator for Matcher<'input> {
             WholeToken(token) => Some(self.token(token, 1)),
             PunctuationStart => Some(self.extract_punctuation()),
             NumberStart => Some(self.extract_number()),
+            CharStart => Some(self.extract_char()),
+            StringStart => Some(self.extract_string()),
             EndOfFile => None,
         }
     }
@@ -291,5 +323,11 @@ mod tests {
         tok(Integer(923), 1, 0, 0, 3),
         tok(Minus, 1, 4, 4, 1),
         tok(Integer(3), 1, 6, 6, 2),
+    ]}
+    test_lex!{extract_char, "'s'", vec![
+        tok(Char('s'), 1, 0, 0, 3)
+    ]}
+    test_lex!{extract_str, r#""hello""#, vec![
+        tok(String("hello"), 1, 0, 0, 7)
     ]}
 }
