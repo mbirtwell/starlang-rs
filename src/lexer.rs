@@ -27,11 +27,11 @@ pub enum Tok {
     Comma,
     Equal,
     LessThan,
-//    MoreThan,
+    MoreThan,
     LessThanOrEqual,
-//    MoreThanOrEqual,
+    MoreThanOrEqual,
     DoubleEqual,
-//    NotEqual,
+    NotEqual,
     Ampersand,
     Pipe,
     Caret,
@@ -39,7 +39,7 @@ pub enum Tok {
     Minus,
     Tilde,
     LeftShift,
-//    RightShift,
+    RightShift,
     Asterisk,
     Percent,
     ForwardSlash,
@@ -120,7 +120,7 @@ impl<'input> Matcher<'input> {
                 '*' => wt!(Asterisk),
                 '%' => wt!(Percent),
                 '/' => wt!(ForwardSlash),
-                '='|'<' => return PunctuationStart(offset),
+                '='|'<'|'>'|'!' => return PunctuationStart(offset),
                 _ => {
                     panic!("IllegalChar");
                 }
@@ -161,6 +161,16 @@ impl<'input> Matcher<'input> {
                         '=' => LessThanOrEqual,
                         '<' => LeftShift
                     },
+                    '>' => second_char!(MoreThan,
+                        '=' => MoreThanOrEqual,
+                        '>' => RightShift
+                    ),
+                    '!' => {
+                        match chars.next() {
+                            Some('=') => self.token(NotEqual, 2),
+                            _ => panic!("IllegalChar ! without ="),
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -247,5 +257,17 @@ mod tests {
     ]}
     test_lex!{extract_left_shift, "<<", vec![
         tok(LeftShift, 1, 0, 0, 2),
+    ]}
+    test_lex!{extract_more_than, ">", vec![
+        tok(MoreThan, 1, 0, 0, 1),
+    ]}
+    test_lex!{extract_more_than_or_equal, ">=", vec![
+        tok(MoreThanOrEqual, 1, 0, 0, 2),
+    ]}
+    test_lex!{extract_right_shift, ">>", vec![
+        tok(RightShift, 1, 0, 0, 2),
+    ]}
+    test_lex!{extract_not_equal, "!=", vec![
+        tok(NotEqual, 1, 0, 0, 2),
     ]}
 }
