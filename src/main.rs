@@ -14,6 +14,7 @@ pub mod grammar;
 mod comment_stripper;
 use comment_stripper::strip_comments;
 mod exec_tree;
+mod lexer;
 
 #[cfg(test)]
 mod test_grammar;
