@@ -3,7 +3,7 @@
 pub enum Tok {
 //    Identifier(String),
     // Literals
-//    Integer(i32),
+    Integer(i32),
 //    Char(char),
 //    String(String),
     // Key words
@@ -74,6 +74,7 @@ impl Location {
 enum FindTokenStartResult {
     WholeToken(Tok,usize),
     PunctuationStart(usize),
+    NumberStart(usize),
     EndOfFile,
 }
 
@@ -121,6 +122,7 @@ impl<'input> Matcher<'input> {
                 '%' => wt!(Percent),
                 '/' => wt!(ForwardSlash),
                 '='|'<'|'>'|'!' => return PunctuationStart(offset),
+                '0'...'9' => return NumberStart(offset),
                 _ => {
                     panic!("IllegalChar");
                 }
@@ -177,6 +179,12 @@ impl<'input> Matcher<'input> {
             None => unreachable!(),
         }
     }
+    fn extract_number(&mut self) -> MatcherItem {
+        use std::str::FromStr;
+        let number_length = self.text.find(|c| {c < '0' || c > '9'}).unwrap_or(self.text.len());
+        let tok = Tok::Integer(i32::from_str(&self.text[..number_length]).unwrap());
+        self.token(tok, number_length)
+    }
 }
 
 type MatcherItem = Result<(Location, Tok, Location), Error>;
@@ -196,6 +204,11 @@ impl<'input> Iterator for Matcher<'input> {
                 self.location.file_offset_bytes += offset;
                 self.text = &self.text[offset..];
                 Some(self.extract_punctuation())
+            },
+            NumberStart(offset) => {
+                self.location.file_offset_bytes += offset;
+                self.text = &self.text[offset..];
+                Some(self.extract_number())
             }
             EndOfFile => None,
         }
@@ -269,5 +282,8 @@ mod tests {
     ]}
     test_lex!{extract_not_equal, "!=", vec![
         tok(NotEqual, 1, 0, 0, 2),
+    ]}
+    test_lex!{extract_integer, "123", vec![
+        tok(Integer(123), 1, 0, 0, 3),
     ]}
 }
