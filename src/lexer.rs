@@ -110,10 +110,15 @@ impl<'input> Matcher<'input> {
         use self::Tok::*;
         use self::FindTokenStartState::*;
 //        let mut expect_line_feed = false;
+        let mut in_comment = false;
         for (offset, c) in self.text.char_indices() {
             macro_rules! result {
                 ( $state:expr ) => {
-                    return FindTokenStartResult { offset: offset, state: $state }
+                    if in_comment {
+                        self.location.line_offset_chars += 1;
+                    } else {
+                        return FindTokenStartResult { offset: offset, state: $state }
+                    }
                 }
             }
             macro_rules! wt {
@@ -123,7 +128,14 @@ impl<'input> Matcher<'input> {
             }
             match c {
                 _ if c == ' ' || c == '\t' => self.location.line_offset_chars += 1,
-                '\n' => self.location.new_line(),
+                '\n' => {
+                    self.location.new_line();
+                    in_comment = false;
+                },
+                '#' => {
+                    self.location.line_offset_chars += 1;
+                    in_comment = true;
+                },
                 '(' => wt!(LeftParen),
                 ')' => wt!(RightParen),
                 '{' => wt!(LeftBrace),
@@ -376,4 +388,14 @@ mod tests {
         extract_not: "not" => Not,
         extract_or: "or" => Or
     }
+    test_lex!{ignore_comments, indoc!("
+            ident # A comment
+            and
+        "),
+        vec![
+            tok(Identifier("ident"), 1, 0, 0, 5),
+            tok(And, 2, 0, 18, 3),
+        ]
+    }
+
 }
