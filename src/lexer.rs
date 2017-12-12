@@ -1,21 +1,21 @@
 
 #[derive(PartialEq, Debug)]
 pub enum Tok<'input> {
-//    Identifier(String),
+    Identifier(&'input str),
     // Literals
     Integer(i32),
     Char(char),
     String(&'input str),
     // Key words
-//    Function,
-//    Return,
-//    Let,
-//    If,
-//    While,
+    Function,
+    Return,
+    Let,
+    If,
+    While,
 
-//    And,
-//    Not,
-//    Or,
+    And,
+    Not,
+    Or,
     // Punctuation
     LeftParen,
     RightParen,
@@ -71,6 +71,13 @@ impl Location {
     }
 }
 
+fn is_identifier_char(c: char) -> bool{
+    match c {
+        'a'...'z'|'A'...'Z'|'0'...'9'|'_' => true,
+        _ => false,
+    }
+}
+
 struct FindTokenStartResult<'input> {
     offset: usize,
     state: FindTokenStartState<'input>,
@@ -82,6 +89,7 @@ enum FindTokenStartState<'input> {
     NumberStart,
     CharStart,
     StringStart,
+    IdentifierOrKeyWordStart,
     EndOfFile,
 }
 
@@ -137,6 +145,7 @@ impl<'input> Matcher<'input> {
                 '0'...'9' => result!(NumberStart),
                 '\'' => result!(CharStart),
                 '"' => result!(StringStart),
+                'a'...'z'|'A'...'Z'|'_' => result!(IdentifierOrKeyWordStart),
                 _ => {
                     panic!("IllegalChar");
                 }
@@ -225,12 +234,25 @@ impl<'input> Matcher<'input> {
             panic!("EOF in string");
         }
     }
+    fn extract_identifier_or_keyword(&mut self) -> <Self as Iterator>::Item {
+        let len = self.text.find(|c| { !is_identifier_char(c) }).unwrap_or(self.text.len());
+        let tok = match &self.text[..len] {
+            "function" => Tok::Function,
+            "return" => Tok::Return,
+            "let" => Tok::Let,
+            "if" => Tok::If,
+            "while" => Tok::While,
+            "and" => Tok::And,
+            "not" => Tok::Not,
+            "or" => Tok::Or,
+            s => Tok::Identifier(s),
+        };
+        self.token(tok, len)
+    }
 }
 
-type MatcherItem<'input> = Result<(Location, Tok<'input>, Location), Error>;
-
 impl<'input> Iterator for Matcher<'input> {
-    type Item = MatcherItem<'input>;
+    type Item = Result<(Location, Tok<'input>, Location), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use self::FindTokenStartState::*;
@@ -243,6 +265,7 @@ impl<'input> Iterator for Matcher<'input> {
             NumberStart => Some(self.extract_number()),
             CharStart => Some(self.extract_char()),
             StringStart => Some(self.extract_string()),
+            IdentifierOrKeyWordStart => Some(self.extract_identifier_or_keyword()),
             EndOfFile => None,
         }
     }
@@ -264,8 +287,18 @@ mod tests {
         }
     }
 
+    macro_rules! test_keywords {
+        ( $( $test_name:ident: $keyword:expr => $tok:ident ),* ) => {
+            $(
+                test_lex!{$test_name, $keyword, vec![
+                    tok($tok, 1, 0, 0, $keyword.len())
+                ]}
+            )*
+        }
+    }
+
     fn tok(t: Tok, line: usize, start_line_offset: usize, start_file_offst: usize, bytes: usize)
-        -> MatcherItem {
+        -> <Matcher as Iterator>::Item {
         Ok(
             (Location::new(line, start_line_offset, start_file_offst),
              t,
@@ -325,9 +358,22 @@ mod tests {
         tok(Integer(3), 1, 6, 6, 2),
     ]}
     test_lex!{extract_char, "'s'", vec![
-        tok(Char('s'), 1, 0, 0, 3)
+        tok(Char('s'), 1, 0, 0, 3),
     ]}
     test_lex!{extract_str, r#""hello""#, vec![
-        tok(String("hello"), 1, 0, 0, 7)
+        tok(String("hello"), 1, 0, 0, 7),
     ]}
+    test_lex!{extract_identifier, "bob", vec![
+        tok(Identifier("bob"), 1, 0, 0, 3),
+    ]}
+    test_keywords!{
+        extract_function: "function" => Function,
+        extract_return: "return" => Return,
+        extract_let: "let" => Let,
+        extract_if: "if" => If,
+        extract_while: "while" => While,
+        extract_and: "and" => And,
+        extract_not: "not" => Not,
+        extract_or: "or" => Or
+    }
 }
