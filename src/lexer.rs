@@ -133,7 +133,7 @@ impl<'input> Matcher<'input> {
                 }
             }
             match c {
-                _ if c == ' ' || c == '\t' => self.location.line_offset_chars += 1,
+                ' '|'\t' => self.location.line_offset_chars += 1,
                 '\n' => {
                     self.location.new_line();
                     in_comment = false;
@@ -164,9 +164,11 @@ impl<'input> Matcher<'input> {
                 '\'' => result!(CharStart),
                 '"' => result!(StringStart),
                 'a'...'z'|'A'...'Z'|'_' => result!(IdentifierOrKeyWordStart),
-                _ => {
-                    panic!("IllegalChar");
-                }
+                _ => if in_comment {
+                    self.location.line_offset_chars += 1
+                } else {
+                    panic!("IllegalChar {:?} on line {}", c, self.location.line);
+                },
             }
         }
         FindTokenStartResult { offset: self.text.len(), state: EndOfFile }
@@ -403,5 +405,25 @@ mod tests {
             tok(And, 2, 0, 18, 3),
         ]
     }
+    test_lex!{multiline_comment, indoc!("\
+            {
+            # 1
+            # 2
+            # 3
+            }
+        "),
+        vec![
+            tok(LeftBrace, 1, 0, 0, 1),
+            tok(RightBrace, 5, 0, 14, 1),
+        ]
+    }
+    test_lex!{comments_containing_otherwise_illegal_chars, indoc!("\
+            return # $:/`
+            return
+        "),
+        vec![
+            tok(Return, 1, 0, 0, 6),
+            tok(Return, 2, 0, 14, 6)
+        ]}
 
 }
