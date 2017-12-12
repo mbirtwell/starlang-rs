@@ -1,5 +1,6 @@
 use super::main::exec;
 use super::super::grammar::parse_Programme;
+use super::super::lexer::Matcher;
 
 struct ProgResult {
     status_code: i32,
@@ -19,7 +20,7 @@ fn compile_and_run_programme_with_input(text: &str, input: &'static [u8]) -> Pro
 }
 
 fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, mut input: &'static [u8]) -> ProgResult {
-    let prog = parse_Programme(text).unwrap();
+    let prog = parse_Programme(Matcher::new(text)).unwrap();
     let mut output = Vec::new();
     let status_code = {
         exec(&prog, args, &mut input, &mut output)

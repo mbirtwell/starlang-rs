@@ -12,9 +12,9 @@ use argparse::{ArgumentParser, Store, Collect};
 pub mod ast;
 pub mod grammar;
 mod comment_stripper;
-use comment_stripper::strip_comments;
 mod exec_tree;
 mod lexer;
+use lexer::Matcher;
 
 #[cfg(test)]
 mod test_grammar;
@@ -67,6 +67,6 @@ fn parse_file(path: &str) -> Result<Vec<ast::Function>> {
     let mut file = fs::OpenOptions::new().read(true).open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    contents = strip_comments(&contents);
-    Ok(grammar::parse_Programme(&contents).unwrap())
+    let lexer = Matcher::new(&contents);
+    Ok(grammar::parse_Programme(lexer).unwrap())
 }

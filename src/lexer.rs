@@ -71,6 +71,12 @@ impl Location {
     }
 }
 
+impl Default for Location {
+    fn default() -> Location {
+        Location::new(0, 0, 0)
+    }
+}
+
 fn is_identifier_char(c: char) -> bool{
     match c {
         'a'...'z'|'A'...'Z'|'0'...'9'|'_' => true,

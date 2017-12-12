@@ -1,47 +1,52 @@
-use std::str::FromStr;
-use ast::{Function, Statement, Expr, BinaryOpCode, UnaryOpCode, extract_string_literal};
+use ast::{Function, Statement, Expr, BinaryOpCode, UnaryOpCode};
+use lexer;
 
-grammar;
+grammar<'input>;
 
-match {
-    r"[0-9]+" => INTEGER,
-    r"[a-zA-Z_]\w*" => IDENTIFIER,
-    r"'[^']'" => CHAR,
-    r#""[^"]*""# => STRING,
-    "function",
-    "return",
-    "let",
-    "if",
-    "while",
-    "(",
-    ")",
-    "{",
-    "}",
-    "]",
-    "[",
-    ";",
-    ",",
-    "=",
-    "==",
-    "<",
-    "<=",
-    "<<",
-    ">",
-    ">=",
-    ">>",
-    "!=",
-    "&",
-    "|",
-    "^",
-    "and",
-    "or",
-    "not",
-    "+",
-    "-",
-    "~",
-    "*",
-    "%",
-    "/",
+extern {
+    type Location = lexer::Location;
+    type Error = lexer::Error;
+
+    enum lexer::Tok<'input> {
+        INTEGER => lexer::Tok::Integer(<i32>),
+        IDENTIFIER => lexer::Tok::Identifier(<&'input str>),
+        CHAR => lexer::Tok::Char(<char>),
+        STRING => lexer::Tok::String(<&'input str>),
+        "function" => lexer::Tok::Function,
+        "return" => lexer::Tok::Return,
+        "let" => lexer::Tok::Let,
+        "if" => lexer::Tok::If,
+        "while" => lexer::Tok::While,
+        "and" => lexer::Tok::And,
+        "or" => lexer::Tok::Or,
+        "not" => lexer::Tok::Not,
+        "(" => lexer::Tok::LeftParen,
+        ")" => lexer::Tok::RightParen,
+        "{" => lexer::Tok::LeftBrace,
+        "}" => lexer::Tok::RightBrace,
+        "]" => lexer::Tok::LeftBracket,
+        "[" => lexer::Tok::RightBracket,
+        ";" => lexer::Tok::SemiColon,
+        "," => lexer::Tok::Comma,
+        "=" => lexer::Tok::Equal,
+        "<" => lexer::Tok::LessThan,
+        ">" => lexer::Tok::MoreThan,
+        "<=" => lexer::Tok::LessThanOrEqual,
+        ">=" => lexer::Tok::MoreThanOrEqual,
+        "<<" => lexer::Tok::LeftShift,
+        ">>" => lexer::Tok::RightShift,
+        "==" => lexer::Tok::DoubleEqual,
+        "!=" => lexer::Tok::NotEqual,
+        "&" => lexer::Tok::Ampersand,
+        "|" => lexer::Tok::Pipe,
+        "^" => lexer::Tok::Caret,
+        "+" => lexer::Tok::Plus,
+        "-" => lexer::Tok::Minus,
+        "~" => lexer::Tok::Tilde,
+        "*" => lexer::Tok::Asterisk,
+        "%" => lexer::Tok::Percent,
+        "/" => lexer::Tok::ForwardSlash,
+    }
 }
 
 pub Programme: Vec<Function> = <Function *>;
@@ -105,18 +110,15 @@ ExpressionList = Comma<Expr>;
 Subscription: Expr = <Primary> "[" <Expr> "]" => Expr::new_subscription(<>);
 
 Atom: Expr = {
-    IntegerLiteral => Expr::Number(<>),
+    INTEGER => Expr::Number(<>),
     ArrayLiteral => Expr::Array(<>),
-    CharacterLiteral => Expr::Char(<>),
-    StringLiteral => Expr::String(<>),
-    Identifier => Expr::Identifier(<>),
+    CHAR => Expr::Char(<>),
+    STRING => Expr::String(<>.to_string()),
+    IDENTIFIER => Expr::Identifier(<>.to_string()),
     "(" <Expr> ")"
 };
 
-IntegerLiteral: i32 = INTEGER => i32::from_str(<>).unwrap();
 ArrayLiteral = "[" <ExpressionList> "]";
-CharacterLiteral: char = CHAR => <>.chars().nth(1).unwrap();
-StringLiteral: String = STRING => extract_string_literal(<>);
 
 ComparisonOp: BinaryOpCode = {
     "<" => BinaryOpCode::LessThan,

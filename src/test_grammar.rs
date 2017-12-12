@@ -1,15 +1,16 @@
 
+use super::lexer::Matcher;
 use super::grammar;
 
 macro_rules! test_expr {
     ($text:expr, $ast:expr) => {
-        assert_eq!(&format!("{:?}", grammar::parse_Expr($text).unwrap()), $ast);
+        assert_eq!(&format!("{:?}", grammar::parse_Expr(Matcher::new($text)).unwrap()), $ast);
     }
 }
 
 macro_rules! test_stmt {
     ($text:expr, $ast:expr) => {
-        assert_eq!(&format!("{:?}", grammar::parse_Statement($text).unwrap()), $ast);
+        assert_eq!(&format!("{:?}", grammar::parse_Statement(Matcher::new($text)).unwrap()), $ast);
     }
 }
 
@@ -55,7 +56,7 @@ fn comparision_op() {
 
 #[test]
 fn chained_comparision_op_not_allowed() {
-    assert!(grammar::parse_Expr("3 < 4 < 5").is_err())
+    assert!(grammar::parse_Expr(Matcher::new("3 < 4 < 5")).is_err())
 }
 
 #[test]
@@ -155,7 +156,7 @@ fn function_definition() {
             return 1;
         }
     ";
-    let actual = &format!("{:?}", grammar::parse_Function(text).unwrap());
+    let actual = &format!("{:?}", grammar::parse_Function(Matcher::new(text)).unwrap());
     let expected = "Function(name: fname, arguments: [arg1], stmts: [Return(1)])";
     assert_eq!(actual, expected);
 }
@@ -172,7 +173,7 @@ fn programme() {
             return a + 1;
         }
     ";
-    let actual = &format!("{:?}", grammar::parse_Programme(text).unwrap());
+    let actual = &format!("{:?}", grammar::parse_Programme(Matcher::new(text)).unwrap());
     let expected = "[\
     Function(name: fname, arguments: [arg1], stmts: [Return(1)]), \
     Function(name: main, arguments: [args], stmts: [\

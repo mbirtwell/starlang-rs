@@ -80,11 +80,6 @@ pub enum UnaryOpCode {
     BoolNot,
 }
 
-pub fn extract_string_literal(token: &str) -> String {
-    let token_length = token.len();
-    return token.chars().skip(1).take(token_length - 2).collect()
-}
-
 fn write_id_list(fmt: &mut Formatter, ids: &Vec<String>) -> Result<(), Error> {
     use std::fmt::Write;
     fmt.write_char('[')?;
