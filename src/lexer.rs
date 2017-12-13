@@ -46,8 +46,18 @@ pub enum Tok<'input> {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum Error {
-//    IllegalChar(char, Location),
+pub struct  Error {
+    location: Location,
+    kind: ErrorKind,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ErrorKind {
+    IllegalChar(char),
+    LonelyExclamation,
+    EofInCharLiteral,
+    BadCharLiteral,
+    EofInString,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -96,6 +106,7 @@ enum FindTokenStartState<'input> {
     CharStart,
     StringStart,
     IdentifierOrKeyWordStart,
+    IllegalChar,
     EndOfFile,
 }
 
@@ -167,7 +178,7 @@ impl<'input> Matcher<'input> {
                 _ => if in_comment {
                     self.location.line_offset_chars += 1
                 } else {
-                    panic!("IllegalChar {:?} on line {}", c, self.location.line);
+                    result!(IllegalChar);
                 },
             }
         }
@@ -182,6 +193,9 @@ impl<'input> Matcher<'input> {
         let start = self.location;
         self.consume(size);
         Ok((start, token, self.location))
+    }
+    fn err(&self, kind: ErrorKind) -> <Self as Iterator>::Item {
+        Err(Error {location: self.location, kind: kind })
     }
     fn extract_punctuation(&mut self) -> <Self as Iterator>::Item {
         use self::Tok::*;
@@ -213,7 +227,7 @@ impl<'input> Matcher<'input> {
                     '!' => {
                         match chars.next() {
                             Some('=') => self.token(NotEqual, 2),
-                            _ => panic!("IllegalChar ! without ="),
+                            _ => self.err(ErrorKind::LonelyExclamation),
                         }
                     }
                     _ => unreachable!(),
@@ -235,12 +249,12 @@ impl<'input> Matcher<'input> {
         }
         let c = match chars.next() {
             Some(c) => c,
-            None => panic!("EOF in char literal"),
+            None => return self.err(ErrorKind::EofInCharLiteral),
         };
         match chars.next() {
             Some('\'') => {},
-            Some(_) => panic!("Bad char literal"),
-            None => panic!("EOF in char literal"),
+            Some(_) => return self.err(ErrorKind::BadCharLiteral),
+            None => return self.err(ErrorKind::EofInCharLiteral),
         }
         let tok = Tok::Char(c);
         self.token(tok, 3)
@@ -251,7 +265,7 @@ impl<'input> Matcher<'input> {
             let s = &self.text[1..string_length + 1];
             self.token(Tok::String(s), string_length + 2)
         } else {
-            panic!("EOF in string");
+            self.err(ErrorKind::EofInString)
         }
     }
     fn extract_identifier_or_keyword(&mut self) -> <Self as Iterator>::Item {
@@ -286,6 +300,7 @@ impl<'input> Iterator for Matcher<'input> {
             CharStart => Some(self.extract_char()),
             StringStart => Some(self.extract_string()),
             IdentifierOrKeyWordStart => Some(self.extract_identifier_or_keyword()),
+            IllegalChar => Some(self.err(ErrorKind::IllegalChar(self.text.chars().next().unwrap()))),
             EndOfFile => None,
         }
     }
@@ -295,6 +310,7 @@ impl<'input> Iterator for Matcher<'input> {
 mod tests {
     use super::*;
     use super::Tok::*;
+    use super::ErrorKind::*;
 
     macro_rules! test_lex {
         ( $test_name:ident, $input:expr, $expected:expr ) => {
@@ -317,14 +333,29 @@ mod tests {
         }
     }
 
-    fn tok(t: Tok, line: usize, start_line_offset: usize, start_file_offst: usize, bytes: usize)
+    macro_rules! test_err {
+        ( $test_name:ident, $input:expr, $expected:expr) => {
+            #[test]
+            fn $test_name() {
+                let matcher = Matcher::new($input);
+                let err = matcher.skip_while(|x| x.is_ok()).next();
+                assert_eq!(err, Some(Err($expected)));
+            }
+        };
+    }
+
+    fn tok(t: Tok, line: usize, start_line_offset: usize, start_file_offset: usize, bytes: usize)
         -> <Matcher as Iterator>::Item {
         Ok(
-            (Location::new(line, start_line_offset, start_file_offst),
+            (Location::new(line, start_line_offset, start_file_offset),
              t,
-             Location::new(line, start_line_offset + bytes, start_file_offst + bytes),
+             Location::new(line, start_line_offset + bytes, start_file_offset + bytes),
             )
         )
+    }
+
+    fn err(kind: ErrorKind, line: usize, line_offset:usize, file_offset: usize) -> Error {
+        Error { location: Location::new(line, line_offset, file_offset), kind: kind}
     }
 
     test_lex!{empty_string_ends_immediately, "", vec![]}
@@ -425,5 +456,12 @@ mod tests {
             tok(Return, 1, 0, 0, 6),
             tok(Return, 2, 0, 14, 6)
         ]}
+
+    test_err!{return_illegal_char, "id$", err(IllegalChar('$'), 1, 2, 2)}
+    test_err!{return_lonely_exclamation, "if ! a", err(LonelyExclamation, 1, 3, 3)}
+    test_err!{return_eof_in_char_early, "if '", err(EofInCharLiteral, 1, 3, 3)}
+    test_err!{return_eof_in_char_late, "if 'a", err(EofInCharLiteral, 1, 3, 3)}
+    test_err!{return_bad_char_literal, "if 'as' {", err(BadCharLiteral, 1, 3, 3)}
+    test_err!{return_eof_in_string, r#"let a = "seffsd"#, err(EofInString, 1, 8, 8)}
 
 }
