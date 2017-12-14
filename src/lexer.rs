@@ -58,6 +58,7 @@ pub enum ErrorKind {
     EofInCharLiteral,
     BadCharLiteral,
     EofInString,
+    MisPlacedCharacterReturn,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -106,13 +107,14 @@ enum FindTokenStartState<'input> {
     CharStart,
     StringStart,
     IdentifierOrKeyWordStart,
-    IllegalChar,
+    Err(ErrorKind),
     EndOfFile,
 }
 
 pub struct Matcher<'input> {
     text: &'input str,
     location: Location,
+    failed: bool,
 }
 
 impl<'input> Matcher<'input> {
@@ -120,13 +122,14 @@ impl<'input> Matcher<'input> {
         Matcher {
             text: text,
             location: Location::new(1, 0, 0),
+            failed: false,
         }
     }
 
     fn find_token_start(&mut self) -> FindTokenStartResult<'input> {
         use self::Tok::*;
         use self::FindTokenStartState::*;
-//        let mut expect_line_feed = false;
+        let mut expect_line_feed = false;
         let mut in_comment = false;
         for (offset, c) in self.text.char_indices() {
             macro_rules! result {
@@ -143,10 +146,19 @@ impl<'input> Matcher<'input> {
                     result!(WholeToken($t))
                 }
             }
+            if expect_line_feed && c != '\n' {
+                self.location.line_offset_chars -= 1;
+                return FindTokenStartResult { offset: offset - 1, state: Err(ErrorKind::MisPlacedCharacterReturn)};
+            }
             match c {
                 ' '|'\t' => self.location.line_offset_chars += 1,
+                '\r' => {
+                    expect_line_feed = true;
+                    self.location.line_offset_chars += 1
+                },
                 '\n' => {
                     self.location.new_line();
+                    expect_line_feed = false;
                     in_comment = false;
                 },
                 '#' => {
@@ -178,7 +190,7 @@ impl<'input> Matcher<'input> {
                 _ => if in_comment {
                     self.location.line_offset_chars += 1
                 } else {
-                    result!(IllegalChar);
+                    result!(Err(ErrorKind::IllegalChar(c)));
                 },
             }
         }
@@ -194,7 +206,8 @@ impl<'input> Matcher<'input> {
         self.consume(size);
         Ok((start, token, self.location))
     }
-    fn err(&self, kind: ErrorKind) -> <Self as Iterator>::Item {
+    fn err(&mut self, kind: ErrorKind) -> <Self as Iterator>::Item {
+        self.failed = true;
         Err(Error {location: self.location, kind: kind })
     }
     fn extract_punctuation(&mut self) -> <Self as Iterator>::Item {
@@ -290,6 +303,9 @@ impl<'input> Iterator for Matcher<'input> {
 
     fn next(&mut self) -> Option<Self::Item> {
         use self::FindTokenStartState::*;
+        if self.failed {
+            return None;
+        }
         let token_start = self.find_token_start();
         self.location.file_offset_bytes += token_start.offset;
         self.text = &self.text[token_start.offset..];
@@ -300,7 +316,7 @@ impl<'input> Iterator for Matcher<'input> {
             CharStart => Some(self.extract_char()),
             StringStart => Some(self.extract_string()),
             IdentifierOrKeyWordStart => Some(self.extract_identifier_or_keyword()),
-            IllegalChar => Some(self.err(ErrorKind::IllegalChar(self.text.chars().next().unwrap()))),
+            Err(e) => Some(self.err(e)),
             EndOfFile => None,
         }
     }
@@ -456,6 +472,23 @@ mod tests {
             tok(Return, 1, 0, 0, 6),
             tok(Return, 2, 0, 14, 6)
         ]}
+    test_lex!{accept_char_return, indoc!("\
+        if\r
+        while\r
+    "), vec![
+        tok(If, 1, 0, 0, 2),
+        tok(While, 2, 0, 4, 5),
+    ]}
+
+    #[test]
+    fn terminates_after_error() {
+        let matcher = Matcher::new("if $ {");
+        let output = matcher.take(3).collect::<Vec<_>>();
+        assert_eq!(output, vec![
+            tok(If, 1, 0, 0, 2),
+            Err(err(IllegalChar('$'), 1, 3, 3)),
+        ])
+    }
 
     test_err!{return_illegal_char, "id$", err(IllegalChar('$'), 1, 2, 2)}
     test_err!{return_lonely_exclamation, "if ! a", err(LonelyExclamation, 1, 3, 3)}
@@ -463,5 +496,6 @@ mod tests {
     test_err!{return_eof_in_char_late, "if 'a", err(EofInCharLiteral, 1, 3, 3)}
     test_err!{return_bad_char_literal, "if 'as' {", err(BadCharLiteral, 1, 3, 3)}
     test_err!{return_eof_in_string, r#"let a = "seffsd"#, err(EofInString, 1, 8, 8)}
+    test_err!{return_illegal_character_return, "if\r{", err(MisPlacedCharacterReturn, 1, 2, 2)}
 
 }
