@@ -15,12 +15,11 @@ mod comment_stripper;
 mod exec_tree;
 mod lexer;
 use lexer::Matcher;
+mod error;
+use error::{OuterResult, OuterError, write_parse_error};
 
 #[cfg(test)]
 mod test_grammar;
-
-type Error = io::Error;
-type Result<T> = std::result::Result<T, Error>;
 
 fn main() {
     let mut stdlib_path = "stdlib.sl".to_string();
@@ -43,17 +42,16 @@ fn main() {
     args.insert(0, script_path.clone());
     let exit_status = match run(&stdlib_path, &script_path, args) {
         Ok(n) => n,
-        Err(ref err) => {
-            writeln!(io::stderr(), "Failed: {}", err).unwrap();
-            1
-        }
+        Err(_) => 254,
     };
     exit(exit_status);
 }
 
-fn run(stdlib_path: &str, script_path: &str, args: Vec<String>) -> Result<i32> {
-    let mut programme = parse_file(stdlib_path)?;
-    programme.extend(parse_file(script_path)?);
+fn run<'filename>(stdlib_path: &'filename str, script_path: &'filename str, args: Vec<String>) -> OuterResult<i32> {
+    let stdlib_contents = read_file(stdlib_path)?;
+    let script_contents = read_file(script_path)?;
+    let mut programme = parse_file(stdlib_path, &stdlib_contents)?;
+    programme.extend(parse_file(script_path, &script_contents)?);
     let stdin = io::stdin();
     let stdout = io::stdout();
     {
@@ -63,10 +61,31 @@ fn run(stdlib_path: &str, script_path: &str, args: Vec<String>) -> Result<i32> {
     }
 }
 
-fn parse_file(path: &str) -> Result<Vec<ast::Function>> {
+fn read_file_inner(path: &str) -> io::Result<String> {
     let mut file = fs::OpenOptions::new().read(true).open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
+    Ok(contents)
+}
+
+fn read_file(path: &str) -> OuterResult<String> {
+    match read_file_inner(path) {
+        Ok(rv) => Ok(rv),
+        Err(err) => {
+            writeln!(io::stderr(), "error: Failed to read file '{}': {}", path, err).unwrap();
+            Err(OuterError::ReadInput)
+        }
+    }
+}
+
+fn parse_file(path: &str, contents: &str) -> OuterResult<Vec<ast::Function>> {
     let lexer = Matcher::new(&contents);
-    Ok(grammar::parse_Programme(lexer).unwrap())
+    match grammar::parse_Programme(lexer) {
+        Ok(rv) => Ok(rv),
+        Err(err) => {
+            let stderr = io::stderr();
+            write_parse_error(&mut stderr.lock(), err)?;
+            Err(OuterError::ParseError)
+        },
+    }
 }

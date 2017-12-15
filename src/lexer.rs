@@ -1,3 +1,4 @@
+use std::fmt;
 
 #[derive(PartialEq, Debug)]
 pub enum Tok<'input> {
@@ -47,8 +48,8 @@ pub enum Tok<'input> {
 
 #[derive(PartialEq, Debug)]
 pub struct  Error {
-    location: Location,
-    kind: ErrorKind,
+    pub location: Location,
+    pub kind: ErrorKind,
 }
 
 #[derive(PartialEq, Debug)]
@@ -59,6 +60,32 @@ pub enum ErrorKind {
     BadCharLiteral,
     EofInString,
     MisPlacedCharacterReturn,
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ErrorKind::*;
+        match *self {
+            IllegalChar(c) => {
+                write!(f, "Illegal character '{}' found", c)
+            }
+            LonelyExclamation => {
+                write!(f, "Encountered illegal '!' which is only valid as part of '!='")
+            }
+            EofInCharLiteral => {
+                write!(f, "Found end of file whilst looking for end of character literal")
+            }
+            BadCharLiteral => {
+                write!(f, "Unterminated or oversized character literal")
+            }
+            EofInString => {
+                write!(f, "Found end of file whilst looking for end of string literal")
+            }
+            MisPlacedCharacterReturn => {
+                write!(f, "Character return '\\r' without following line feed '\\n'")
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
