@@ -4,8 +4,8 @@ use lexer;
 grammar<'input>;
 
 extern {
-    type Location = lexer::Location;
-    type Error = lexer::Error;
+    type Location = lexer::Location<'input>;
+    type Error = lexer::Error<'input>;
 
     enum lexer::Tok<'input> {
         INTEGER => lexer::Tok::Integer(<i32>),

@@ -47,8 +47,8 @@ pub enum Tok<'input> {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct  Error {
-    pub location: Location,
+pub struct Error<'input> {
+    pub location: Location<'input>,
     pub kind: ErrorKind,
 }
 
@@ -89,15 +89,17 @@ impl fmt::Display for ErrorKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct Location {
+pub struct Location<'input> {
+    file_name: &'input str,
     line: usize,
     line_offset_chars: usize,
     file_offset_bytes: usize,
 }
 
-impl Location {
-    fn new(line: usize, line_offset_chars: usize, file_offset_bytes: usize) -> Location {
+impl<'input> Location<'input> {
+    fn new(file_name: &'input str, line: usize, line_offset_chars: usize, file_offset_bytes: usize) -> Location {
         Location {
+            file_name: file_name,
             line: line,
             line_offset_chars: line_offset_chars,
             file_offset_bytes: file_offset_bytes
@@ -109,9 +111,9 @@ impl Location {
     }
 }
 
-impl Default for Location {
-    fn default() -> Location {
-        Location::new(0, 0, 0)
+impl<'input> Default for Location<'input> {
+    fn default() -> Location<'input> {
+        Location::new("unknown", 0, 0, 0)
     }
 }
 
@@ -140,15 +142,15 @@ enum FindTokenStartState<'input> {
 
 pub struct Matcher<'input> {
     text: &'input str,
-    location: Location,
+    location: Location<'input>,
     failed: bool,
 }
 
 impl<'input> Matcher<'input> {
-    pub fn new(text: &'input str) -> Matcher {
+    pub fn new(file_name: &'input str, text: &'input str) -> Matcher<'input> {
         Matcher {
             text: text,
-            location: Location::new(1, 0, 0),
+            location: Location::new(file_name, 1, 0, 0),
             failed: false,
         }
     }
@@ -326,7 +328,7 @@ impl<'input> Matcher<'input> {
 }
 
 impl<'input> Iterator for Matcher<'input> {
-    type Item = Result<(Location, Tok<'input>, Location), Error>;
+    type Item = Result<(Location<'input>, Tok<'input>, Location<'input>), Error<'input>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use self::FindTokenStartState::*;
@@ -359,7 +361,7 @@ mod tests {
         ( $test_name:ident, $input:expr, $expected:expr ) => {
             #[test]
              fn $test_name() {
-                let matcher = Matcher::new($input);
+                let matcher = Matcher::new("test", $input);
                 let output = matcher.collect::<Vec<_>>();
                 assert_eq!(output, $expected)
              }
@@ -380,7 +382,7 @@ mod tests {
         ( $test_name:ident, $input:expr, $expected:expr) => {
             #[test]
             fn $test_name() {
-                let matcher = Matcher::new($input);
+                let matcher = Matcher::new("test", $input);
                 let err = matcher.skip_while(|x| x.is_ok()).next();
                 assert_eq!(err, Some(Err($expected)));
             }
@@ -390,15 +392,15 @@ mod tests {
     fn tok(t: Tok, line: usize, start_line_offset: usize, start_file_offset: usize, bytes: usize)
         -> <Matcher as Iterator>::Item {
         Ok(
-            (Location::new(line, start_line_offset, start_file_offset),
+            (Location::new("test", line, start_line_offset, start_file_offset),
              t,
-             Location::new(line, start_line_offset + bytes, start_file_offset + bytes),
+             Location::new("test", line, start_line_offset + bytes, start_file_offset + bytes),
             )
         )
     }
 
-    fn err(kind: ErrorKind, line: usize, line_offset:usize, file_offset: usize) -> Error {
-        Error { location: Location::new(line, line_offset, file_offset), kind: kind}
+    fn err(kind: ErrorKind, line: usize, line_offset:usize, file_offset: usize) -> Error<'static> {
+        Error { location: Location::new("test", line, line_offset, file_offset), kind: kind}
     }
 
     test_lex!{empty_string_ends_immediately, "", vec![]}
@@ -509,7 +511,7 @@ mod tests {
 
     #[test]
     fn terminates_after_error() {
-        let matcher = Matcher::new("if $ {");
+        let matcher = Matcher::new("test", "if $ {");
         let output = matcher.take(3).collect::<Vec<_>>();
         assert_eq!(output, vec![
             tok(If, 1, 0, 0, 2),

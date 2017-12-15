@@ -9,7 +9,9 @@ pub enum OuterError {
     OutputError,
 }
 pub type OuterResult<T> = std::result::Result<T, OuterError>;
-pub type ParseError<'input> = lalrpop_util::ParseError<Location, Tok<'input>, lexer::Error>;
+pub type ParseError<'input> = lalrpop_util::ParseError<
+    Location<'input>, Tok<'input>, lexer::Error<'input>
+>;
 
 pub fn write_parse_error(f: &mut Write, err: ParseError) -> OuterResult<()> {
     write_parse_error_inner(f, err).map_err(|_| OuterError::OutputError )
