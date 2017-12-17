@@ -90,10 +90,10 @@ impl fmt::Display for ErrorKind {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Location<'input> {
-    file_name: &'input str,
-    line: usize,
-    line_offset_chars: usize,
-    file_offset_bytes: usize,
+    pub file_name: &'input str,
+    pub line: usize,
+    pub line_offset_chars: usize,
+    pub file_offset_bytes: usize,
 }
 
 impl<'input> Location<'input> {

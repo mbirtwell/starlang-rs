@@ -1,7 +1,9 @@
 use std::process::exit;
 use std::io::{self,Read,Write};
 use std::fs;
+use std::collections::HashMap;
 
+extern crate ansi_term;
 extern crate lalrpop_util;
 #[macro_use]
 extern crate indoc;
@@ -20,6 +22,8 @@ use error::{OuterResult, OuterError, write_parse_error};
 
 #[cfg(test)]
 mod test_grammar;
+
+type FileContents<'input> = HashMap<&'input str, &'input str>;
 
 fn main() {
     let mut stdlib_path = "stdlib.sl".to_string();
@@ -42,22 +46,39 @@ fn main() {
     args.insert(0, script_path.clone());
     let exit_status = match run(&stdlib_path, &script_path, args) {
         Ok(n) => n,
+        Err(OuterError::FailedInitAnsiTerm(err_code)) => {
+            writeln!(
+                io::stderr(),
+                "Failed to initialise ansi terminal support. err code: {}",
+                err_code,
+            ).unwrap();
+            254
+        },
         Err(_) => 254,
     };
     exit(exit_status);
 }
 
 fn run<'filename>(stdlib_path: &'filename str, script_path: &'filename str, args: Vec<String>) -> OuterResult<i32> {
+    ansi_term::enable_ansi_support().map_err(|e| OuterError::FailedInitAnsiTerm(e))?;
     let stdlib_contents = read_file(stdlib_path)?;
     let script_contents = read_file(script_path)?;
-    let mut programme = parse_file(stdlib_path, &stdlib_contents)?;
-    programme.extend(parse_file(script_path, &script_contents)?);
-    let stdin = io::stdin();
-    let stdout = io::stdout();
     {
-        let mut stdin_lock = stdin.lock();
-        let mut stdout_lock = stdout.lock();
-        Ok(exec_tree::exec(&programme, args, &mut stdin_lock, &mut stdout_lock))
+        let contents = {
+            let mut contents: FileContents = HashMap::new();
+            contents.insert(stdlib_path, &stdlib_contents);
+            contents.insert(script_path, &script_contents);
+            contents
+        };
+        let mut programme = parse_file(stdlib_path, &stdlib_contents, &contents)?;
+        programme.extend(parse_file(script_path, &script_contents, &contents)?);
+        let stdin = io::stdin();
+        let stdout = io::stdout();
+        {
+            let mut stdin_lock = stdin.lock();
+            let mut stdout_lock = stdout.lock();
+            Ok(exec_tree::exec(&programme, args, &mut stdin_lock, &mut stdout_lock))
+        }
     }
 }
 
@@ -78,13 +99,13 @@ fn read_file(path: &str) -> OuterResult<String> {
     }
 }
 
-fn parse_file(path: &str, contents: &str) -> OuterResult<Vec<ast::Function>> {
+fn parse_file(path: &str, contents: &str, all_contents: &FileContents) -> OuterResult<Vec<ast::Function>> {
     let lexer = Matcher::new(path, &contents);
     match grammar::parse_Programme(lexer) {
         Ok(rv) => Ok(rv),
         Err(err) => {
             let stderr = io::stderr();
-            write_parse_error(&mut stderr.lock(), err)?;
+            write_parse_error(&mut stderr.lock(), err, all_contents)?;
             Err(OuterError::ParseError)
         },
     }

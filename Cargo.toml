@@ -7,6 +7,7 @@ build = "build.rs" # LALRPOP preprocessing
 [dependencies]
 indoc = "0.2.3"
 argparse = "*"
+ansi_term = "0.10.2"
 
 # Add a dependency on the regex crate; this is not
 # needed if you are writing your own tokenizer by
