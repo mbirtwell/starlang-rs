@@ -97,7 +97,7 @@ pub struct Location<'input> {
 }
 
 impl<'input> Location<'input> {
-    fn new(file_name: &'input str, line: usize, line_offset_chars: usize, file_offset_bytes: usize) -> Location {
+    pub fn new(file_name: &'input str, line: usize, line_offset_chars: usize, file_offset_bytes: usize) -> Location {
         Location {
             file_name: file_name,
             line: line,
