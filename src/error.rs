@@ -101,7 +101,7 @@ fn write_locations(f: &mut Write, start: &Location, end: &Location, contents: &F
                 Red.bold().paint(&file_content[start.file_offset_bytes..end_start_line]),
             )?;
             if start.line + 1 != end.line {
-                for (lineno, line) in file_content[end_start_line + 1..start_end_line - 1].lines().enumerate() {
+                for (lineno, line) in file_content[end_start_line..start_end_line].lines().skip(1).enumerate() {
                     writeln!(
                         f, "{} |{}",
                         start.line + lineno + 1,
@@ -140,19 +140,15 @@ fn find_line_end(location: &Location, file_content: &str) -> usize {
 }
 
 fn write_previous_line(f: &mut Write, location: &Location, line_start: usize, file_content: &str) -> io::Result<()> {
-    if let Some(prev_line_end) = file_content[..line_start].rfind(|c| c != '\n' && c != '\r') {
-        if let Some(prev_line)  = file_content[..prev_line_end + 1].lines().next_back() {
-            writeln!(f, "{} |{}",  location.line - 1, prev_line)?;
-        }
+    if let Some(prev_line)  = file_content[..line_start].lines().next_back() {
+        writeln!(f, "{} |{}",  location.line - 1, prev_line)?;
     }
     Ok(())
 }
 
 fn write_next_line(f: &mut Write, location: &Location, line_end: usize, file_content: &str) -> io::Result<()> {
-    if let Some(next_line_start) = file_content[line_end..].find(|c| c != '\n' && c != '\r') {
-        if let Some(next_line) = file_content[line_end + next_line_start..].lines().next() {
-            writeln!(f, "{} |{}",  location.line + 1, next_line)?;
-        }
+    if let Some(next_line) = file_content[line_end..].lines().skip(1).next() {
+        writeln!(f, "{} |{}",  location.line + 1, next_line)?;
     }
     Ok(())
 }
@@ -298,4 +294,22 @@ At: test.sl:2
 ", Red.bold().paint("a and"), Red.bold().paint("    b and"),
     Red.bold().paint("    c and"), Red.bold().paint("    d"))
     }
+
+    test_write_lines!{error_surrounded_by_blank_lines, "\
+# a
+
+if something() {
+
+    # code here
+}
+",
+(3, 3, 8),
+(3, 14, 19), format!("\
+At: test.sl:3
+2 |
+3 |if {} {{
+4 |
+", Red.bold().paint("something()"))
+    }
+
 }
