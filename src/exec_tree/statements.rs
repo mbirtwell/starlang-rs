@@ -1,4 +1,5 @@
 use super::base::*;
+use super::error::BuildResult;
 use super::expressions::{build_expr, build_lexpr, Identifier, evaluate_to_bool};
 
 struct Return {
@@ -66,12 +67,15 @@ impl Statement for WhileStatement {
     }
 }
 
-pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<ast::Statement>) -> Vec<Box<Statement>> {
+pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &'a Vec<ast::Statement>) -> BuildResult<'a, Vec<Box<Statement>>> {
     let mut rv: Vec<Box<Statement>> = Vec::with_capacity(stmts.len());
+    let mut failures = Vec::new();
     macro_rules! expr{
-        ( $expr:expr ) => {
-            build_expr(globals, scope_stack, $expr)
-        }
+        ( $expr:expr ) => {{
+            let (expr, inner_failures) = build_expr(globals, scope_stack, $expr);
+            failures.extend(inner_failures);
+            expr
+        }}
     }
     macro_rules! stmt {
         ( $stmt:expr ) => {
@@ -79,9 +83,11 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
         };
     }
     macro_rules! block {
-        ( $stmts:expr ) => {
-            build_block(globals, scope_stack, $stmts)
-        };
+        ( $stmts:expr ) => {{
+            let (stmts, inner_failures) = build_block(globals, scope_stack, $stmts);
+            failures.extend(inner_failures);
+            stmts
+        }};
     }
     for stmt in stmts {
         match *stmt {
@@ -91,13 +97,15 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
             ast::Statement::Declare(ref name, ref expr) => {
                 let var_id = scope_stack.declare(name);
                 stmt!(Assign {
-                    lexpr: Identifier::new(var_id),
+                    lexpr: Box::new(Identifier::new(var_id)),
                     rexpr: expr!(expr),
                 })
             },
             ast::Statement::Assign(ref lexpr, ref rexpr) => {
+                let (lexpr, inner_failures) = build_lexpr(globals, scope_stack, lexpr);
+                failures.extend(inner_failures);
                 stmt!(Assign {
-                    lexpr: build_lexpr(globals, scope_stack, lexpr),
+                    lexpr: lexpr,
                     rexpr: expr!(rexpr),
                 })
             },
@@ -112,5 +120,5 @@ pub fn build_block(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &Vec<
             }
         }
     };
-    rv
+    (rv, failures)
 }

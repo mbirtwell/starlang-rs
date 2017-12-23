@@ -3,6 +3,7 @@ use std::io::{self, Write};
 use lalrpop_util;
 use ansi_term::Colour::{Red};
 use lexer::{self, Location, Tok};
+use exec_tree::error::*;
 
 use super::FileContents;
 
@@ -10,6 +11,7 @@ use super::FileContents;
 pub enum OuterError {
     ReadInput,
     ParseError,
+    StaticAnalysisFailed,
     OutputError,
     FailedInitAnsiTerm(u64),
 }
@@ -17,6 +19,14 @@ pub type OuterResult<T> = std::result::Result<T, OuterError>;
 pub type ParseError<'input> = lalrpop_util::ParseError<
     Location<'input>, Tok<'input>, lexer::Error<'input>
 >;
+
+impl<'a> From<ExecError<'a>> for OuterError {
+    fn from(value: ExecError<'a>) -> OuterError {
+        match value {
+            ExecError::StaticAnalysisFailed(_) => OuterError::StaticAnalysisFailed,
+        }
+    }
+}
 
 macro_rules! error {
     ( $out:expr, $fmt:expr ) => {
@@ -66,6 +76,32 @@ fn write_parse_error_inner(f: &mut Write, err: ParseError, contents: &FileConten
         User { ref error } => {
             error!(f, "{}", error.kind)?;
             write_location(f, &error.location, contents)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn write_exec_error<'a>(f: &mut Write, err: &'a ExecError, contents: &'a FileContents) -> OuterResult<()> {
+    write_exec_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
+}
+
+fn write_exec_error_inner<'a>(f: &mut Write, err: &'a ExecError, contents: &'a FileContents) -> io::Result<()> {
+    match *err {
+        ExecError::StaticAnalysisFailed(ref errs) => {
+            for static_err in errs {
+                write_static_analysis_err(f, static_err, contents)?;
+                writeln!(f)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn write_static_analysis_err<'a>(f: &mut Write, err: &'a StaticAnalysisError, contents: &'a FileContents) -> io::Result<()> {
+    match *err {
+        StaticAnalysisError::CallUnknownFunction(fname, start, end) => {
+            error!(f, "Call to unknown function {:?}", fname)?;
+            write_locations(f, &start, &end, contents)?;
         }
     }
     Ok(())

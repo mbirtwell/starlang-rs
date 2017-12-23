@@ -1,3 +1,4 @@
+pub mod error;
 mod base;
 mod expressions;
 mod statements;

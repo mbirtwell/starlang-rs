@@ -120,7 +120,7 @@ impl<'b> Globals<'b> {
     }
     pub fn has_main(&self) -> bool { self.function_declarations.contains_key("main") }
     pub fn get_main(&self) -> &Callable {
-        self.lookup_func(self.reference_func("main"))
+        self.lookup_func(self.reference_func("main").expect("No main defined"))
     }
     pub fn define_func(&mut self, name: &str, stmts: Vec<Box<Statement>>, max_locals: usize) {
         match self.function_declarations.get(name) {
@@ -136,11 +136,8 @@ impl<'b> Globals<'b> {
             None => unreachable!("Attempting to define undeclared function {}", name),
         }
     }
-    pub fn reference_func(&self, name: &str) -> FunctionId {
-        match self.function_declarations.get(name) {
-            Some(ref decl) => decl.id,
-            None => panic!("Attempting to use undeclard function {}", name),
-        }
+    pub fn reference_func(&self, name: &str) -> Option<FunctionId> {
+        self.function_declarations.get(name).map(|v| v.id)
     }
     pub fn lookup_func(&self, func_id: FunctionId) -> &Callable {
         &*self.functions[func_id.idx]

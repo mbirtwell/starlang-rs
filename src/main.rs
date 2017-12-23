@@ -18,7 +18,7 @@ mod exec_tree;
 mod lexer;
 use lexer::Matcher;
 mod error;
-use error::{OuterResult, OuterError, write_parse_error};
+use error::*;
 
 #[cfg(test)]
 mod test_grammar;
@@ -77,7 +77,14 @@ fn run<'filename>(stdlib_path: &'filename str, script_path: &'filename str, args
         {
             let mut stdin_lock = stdin.lock();
             let mut stdout_lock = stdout.lock();
-            Ok(exec_tree::exec(&programme, args, &mut stdin_lock, &mut stdout_lock))
+            match exec_tree::exec(&programme, args, &mut stdin_lock, &mut stdout_lock) {
+                Err(err) => {
+                    let stderr = io::stderr();
+                    write_exec_error(&mut stderr.lock(), &err, &contents)?;
+                    Err(err.into())
+                },
+                Ok(i) => Ok(i),
+            }
         }
     }
 }

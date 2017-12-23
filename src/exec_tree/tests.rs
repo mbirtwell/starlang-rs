@@ -1,6 +1,7 @@
+use super::error::*;
 use super::main::exec;
 use super::super::grammar::parse_Programme;
-use super::super::lexer::Matcher;
+use super::super::lexer::{Matcher, Location};
 
 struct ProgResult {
     status_code: i32,
@@ -25,7 +26,7 @@ fn compile_and_run_programme_with_args_and_input(text: &str, args: Vec<String>, 
     let status_code = {
         exec(&prog, args, &mut input, &mut output)
     };
-    ProgResult { status_code: status_code, output: output }
+    ProgResult { status_code: status_code.unwrap(), output: output }
 }
 
 #[test]
@@ -333,3 +334,26 @@ test_return_expr!{bool_not_converts_0_to_1, "not 0", 1}
 test_return_expr!{bit_not, "~345", -346}
 test_return_expr!{unary_neg, "-(2 + 3)", -5}
 //test_return_expr!{unary_plus, "+(2 + 3)", 5}
+
+#[test]
+fn reports_static_analysis_failure_for_call_to_unknown_function() {
+    let text = r#"
+function main() {
+    unk(1, 2);
+}
+    "#;
+    let prog = parse_Programme(Matcher::new("test.sl", text)).unwrap();
+    let mut output = Vec::new();
+    let mut input: &'static [u8] = &[];
+    {
+        let err = exec(&prog, Vec::new(), &mut input, &mut output).unwrap_err();
+        assert_eq!(err, ExecError::StaticAnalysisFailed(vec![
+            StaticAnalysisError::CallUnknownFunction(
+                "unk",
+                Location::new("test.sl", 3, 4, 23),
+                Location::new("test.sl", 3, 13, 32),
+            )
+        ]));
+    };
+
+}
