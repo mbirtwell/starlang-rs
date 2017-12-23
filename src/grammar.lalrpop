@@ -49,29 +49,29 @@ extern {
     }
 }
 
-pub Programme: Vec<Function> = <Function *>;
-pub Function: Function = "function" <Identifier> "(" <Comma<Identifier>> ")" <Block> => Function::new(<>);
+pub Programme: Vec<Function<'input>> = <Function *>;
+pub Function: Function<'input> = "function" <Identifier> "(" <Comma<Identifier>> ")" <Block> => Function::new(<>);
 
 pub Statement = { <SimpleStatement> ";", BlockStatement };
 SimpleStatement = { Return, ExprStmt, Assign, Declare };
-Return: Statement = "return" <Expr> => Statement::Return(<>);
-ExprStmt: Statement = <Expr> => Statement::Expr(<>);
-Assign: Statement = <Expr> "=" <Expr> => Statement::Assign(<>);
-Declare: Statement = "let" <Identifier> "=" <Expr> => Statement::Declare(<>);
+Return: Statement<'input> = "return" <Expr> => Statement::Return(<>);
+ExprStmt: Statement<'input> = <Expr> => Statement::Expr(<>);
+Assign: Statement<'input> = <Expr> "=" <Expr> => Statement::Assign(<>);
+Declare: Statement<'input> = "let" <Identifier> "=" <Expr> => Statement::Declare(<>);
 BlockStatement = {If, While};
-If: Statement = "if" <Expr> <Block> => Statement::If(<>);
-While: Statement = "while" <Expr> <Block> => Statement::While(<>);
-Block: Vec<Statement> = {
+If: Statement<'input> = "if" <Expr> <Block> => Statement::If(<>);
+While: Statement<'input> = "while" <Expr> <Block> => Statement::While(<>);
+Block: Vec<Statement<'input>> = {
     "{" <Statement *> "}"
 };
 
-Tier<Op,NextTier>: Expr = {
-    Tier<Op,NextTier> Op NextTier => Expr::new_binary_op(<>),
+Tier<Op,NextTier>: Expr<'input> = {
+    @L Tier<Op,NextTier> Op NextTier @R => Expr::new_binary_op(<>),
     NextTier
 };
 
-UnaryTier<Op, NextTier>: Expr = {
-    Op UnaryTier<Op, NextTier> => Expr::new_unary_op(<>),
+UnaryTier<Op, NextTier>: Expr<'input> = {
+    @L Op UnaryTier<Op, NextTier> @R  => Expr::new_unary_op(<>),
     NextTier,
 };
 
@@ -91,7 +91,7 @@ OrTest = Tier<BoolOrOp, AndTest>;
 AndTest = Tier<BoolAndOp, NotTest>;
 NotTest = UnaryTier<BoolNotOp, ComparisonExpr>;
 ComparisonExpr = {
-    OrExpr ComparisonOp OrExpr => Expr::new_binary_op(<>),
+    @L OrExpr ComparisonOp OrExpr @R => Expr::new_binary_op(<>),
     OrExpr,
 };
 OrExpr = Tier<BitOrOp, XorExpr>;
@@ -103,18 +103,18 @@ MExpr = Tier<MOp, UExpr>;
 UExpr = UnaryTier<UOp, Primary>;
 
 Primary = {Call, Subscription, Atom};
-Call: Expr = <Identifier> "(" <ExpressionList> ")" => Expr::Call(<>);
-Identifier: String = IDENTIFIER => <>.to_string();
+Call: Expr<'input> = <@L> <Identifier> "(" <ExpressionList> ")" <@R> => Expr::new_call(<>);
+Identifier: &'input str = IDENTIFIER => <>;
 ExpressionList = Comma<Expr>;
 
-Subscription: Expr = <Primary> "[" <Expr> "]" => Expr::new_subscription(<>);
+Subscription: Expr<'input> = <@L> <Primary> "[" <Expr> "]" <@R> => Expr::new_subscription(<>);
 
-Atom: Expr = {
-    INTEGER => Expr::Number(<>),
-    ArrayLiteral => Expr::Array(<>),
-    CHAR => Expr::Char(<>),
-    STRING => Expr::String(<>.to_string()),
-    IDENTIFIER => Expr::Identifier(<>.to_string()),
+Atom: Expr<'input> = {
+    @L INTEGER @R => Expr::new_number(<>),
+    @L ArrayLiteral @R => Expr::new_array(<>),
+    @L CHAR @R => Expr::new_char(<>),
+    @L STRING @R => Expr::new_string(<>),
+    @L IDENTIFIER @R => Expr::new_identifier(<>),
     "(" <Expr> ")"
 };
 

@@ -99,7 +99,7 @@ fn read_file(path: &str) -> OuterResult<String> {
     }
 }
 
-fn parse_file(path: &str, contents: &str, all_contents: &FileContents) -> OuterResult<Vec<ast::Function>> {
+fn parse_file<'a>(path: &'a str, contents: &'a str, all_contents: &'a FileContents) -> OuterResult<Vec<ast::Function<'a>>> {
     let lexer = Matcher::new(path, &contents);
     match grammar::parse_Programme(lexer) {
         Ok(rv) => Ok(rv),

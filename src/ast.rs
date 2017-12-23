@@ -1,50 +1,70 @@
 use std::fmt::{Debug, Formatter, Error};
 
+use lexer::Location;
 
-pub struct Function {
+
+pub struct Function<'a> {
     pub name: String,
-    pub arguments: Vec<String>,
-    pub stmts: Vec<Statement>,
+    pub arguments: Vec<&'a str>,
+    pub stmts: Vec<Statement<'a>>,
 }
 
-impl Function {
-    pub fn new(name: String, arguments: Vec<String>, stmts: Vec<Statement>) -> Function {
-        return Function {name: name, arguments: arguments, stmts: stmts};
+impl<'a> Function<'a> {
+    pub fn new(name: &str, arguments: Vec<&'a str>, stmts: Vec<Statement<'a>>) -> Function<'a> {
+        return Function {name: name.into(), arguments: arguments, stmts: stmts};
     }
 }
 
-pub enum Statement {
-    Expr(Expr),
-    Return(Expr),
-    Assign(Expr, Expr),
-    Declare(String, Expr),
-    If(Expr, Vec<Statement>),
-    While(Expr, Vec<Statement>),
+pub enum Statement<'a> {
+    Expr(Expr<'a>),
+    Return(Expr<'a>),
+    Assign(Expr<'a>, Expr<'a>),
+    Declare(&'a str, Expr<'a>),
+    If(Expr<'a>, Vec<Statement<'a>>),
+    While(Expr<'a>, Vec<Statement<'a>>),
 }
 
-pub enum Expr {
+pub struct Expr<'a> {
+    pub kind: ExprKind<'a>,
+    pub start: Location<'a>,
+    pub end: Location<'a>,
+}
+
+pub enum ExprKind<'a> {
     Number(i32),
     Char(char),
-    String(String),
-    Array(Vec<Expr>),
-    BinaryOp(Box<Expr>, BinaryOpCode, Box<Expr>),
-    UnaryOp(UnaryOpCode, Box<Expr>),
-    Call(String, Vec<Expr>),
-    Identifier(String),
-    Subscription(Box<Expr>, Box<Expr>),
+    String(&'a str),
+    Array(Vec<Expr<'a>>),
+    BinaryOp(Box<Expr<'a>>, BinaryOpCode, Box<Expr<'a>>),
+    UnaryOp(UnaryOpCode, Box<Expr<'a>>),
+    Call(&'a str, Vec<Expr<'a>>),
+    Identifier(&'a str),
+    Subscription(Box<Expr<'a>>, Box<Expr<'a>>),
     Error,
 }
 
-impl Expr {
-    pub fn new_binary_op(lhs: Expr, op: BinaryOpCode, rhs: Expr) -> Expr {
-        Expr::BinaryOp(Box::new(lhs), op, Box::new(rhs))
-    }
-    pub fn new_unary_op(op: UnaryOpCode, expr: Expr) -> Expr {
-        Expr::UnaryOp(op, Box::new(expr))
-    }
-    pub fn new_subscription(array_expr: Expr, subscript_expr: Expr) -> Expr {
-        Expr::Subscription(Box::new(array_expr), Box::new(subscript_expr))
-    }
+macro_rules! cons {
+    ( $name:ident ( $( $arg:ident: $typ:ty ), * ) => $kind:ident ) => {
+        pub fn $name(start: Location<'a>, $( $arg: $typ , )* end: Location<'a>) -> Self {
+            Self {
+                kind: ExprKind::$kind($( $arg.into(), )*),
+                start: start,
+                end: end,
+            }
+        }
+    };
+}
+
+impl<'a> Expr<'a> {
+    cons!{new_binary_op(lhs:Self, op:BinaryOpCode, rhs:Self ) => BinaryOp}
+    cons!{new_unary_op(op: UnaryOpCode, expr: Self) => UnaryOp}
+    cons!{new_subscription(array_expr: Self, subscript_expr: Self) => Subscription}
+    cons!{new_number(n: i32) => Number}
+    cons!{new_string(s: &'a str) => String}
+    cons!{new_char(c: char) => Char}
+    cons!{new_array(exprs: Vec<Self>) => Array}
+    cons!{new_call(func: &'a str, exprs: Vec<Self>) => Call}
+    cons!{new_identifier(name: &'a str) => Identifier}
 }
 
 #[derive(Copy, Clone)]
@@ -80,7 +100,7 @@ pub enum UnaryOpCode {
     BoolNot,
 }
 
-fn write_id_list(fmt: &mut Formatter, ids: &Vec<String>) -> Result<(), Error> {
+fn write_id_list(fmt: &mut Formatter, ids: &Vec<&str>) -> Result<(), Error> {
     use std::fmt::Write;
     fmt.write_char('[')?;
     let mut id_iter = ids.iter();
@@ -97,7 +117,7 @@ fn write_id_list(fmt: &mut Formatter, ids: &Vec<String>) -> Result<(), Error> {
     fmt.write_char(']')
 }
 
-impl Debug for Function {
+impl<'a> Debug for Function<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         //write!(fmt, "Function(name: {}, arguments: {:?}, stmts: {:?})", self.name, self.arguments, self.stmts)
         write!(fmt, "Function(name: {}, arguments: ", self.name)?;
@@ -106,7 +126,7 @@ impl Debug for Function {
     }
 }
 
-impl Debug for Statement {
+impl<'a> Debug for Statement<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
         match *self {
@@ -120,9 +140,15 @@ impl Debug for Statement {
     }
 }
 
-impl Debug for Expr {
+impl<'a> Debug for Expr<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Expr::*;
+        self.kind.fmt(fmt)
+    }
+}
+
+impl<'a> Debug for ExprKind<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::ExprKind::*;
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
             Char(c) => write!(fmt, "Char({:?})", c),

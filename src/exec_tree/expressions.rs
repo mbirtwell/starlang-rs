@@ -190,7 +190,7 @@ fn build_expr_list(globals: &Globals, scope_stack: &ScopeStack, exprs: &[ast::Ex
 }
 
 pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr) -> Box<Expr> {
-    use ast::Expr::*;
+    use ast::ExprKind::*;
     use ast::BinaryOpCode::*;
     macro_rules! expr{
         ( $expr:expr ) => {
@@ -202,10 +202,10 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
             build_expr_list(globals, scope_stack, $expr)
         }
     }
-    match *expr {
+    match expr.kind {
         Number(n) => Box::new(IntegerLiteral { value: n }),
         Char(c) => Box::new(IntegerLiteral {value: c as i32}),
-        String(ref s) => Box::new(StringLiteral { s: s.clone() }),
+        String(ref s) => Box::new(StringLiteral { s: s.to_string() }),
         Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
         BinaryOp(ref l, op, ref r) => {
             let lhs = expr!(l);
@@ -283,13 +283,13 @@ pub fn build_expr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr)
 }
 
 pub fn build_lexpr(globals: &Globals, scope_stack: &ScopeStack, expr: &ast::Expr) -> Box<LExpr> {
-    use ast::Expr::*;
+    use ast::ExprKind::*;
     macro_rules! expr{
         ( $expr:expr ) => {
             build_expr(globals, scope_stack, $expr)
         }
     }
-    match *expr {
+    match expr.kind {
         Identifier(ref name) => self::Identifier::new(scope_stack.get(name)),
         Subscription(ref array_expr, ref index_expr) => {
             Box::new(self::Subscription {
