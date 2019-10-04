@@ -1,18 +1,18 @@
 use super::base::*;
 use super::error::*;
 
-fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<Expr>]) -> Vec<Value> {
+fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<dyn Expr>]) -> Vec<Value> {
     exprs.iter().map(|ref expr| expr.evaluate(globals, locals)).collect()
 }
 
-fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &Expr) -> i32 {
+fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> i32 {
     match expr.evaluate(globals, locals) {
         Value::Integer(n) => n,
         Value::Array(_) => panic!("Required int got array"),
     }
 }
 
-pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &Expr) -> bool {
+pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> bool {
     match expr.evaluate(globals, locals) {
         Value::Integer(n) => n != 0,
         Value::Array(_) => unimplemented!(),
@@ -57,7 +57,7 @@ impl Expr for StringLiteral {
 }
 
 struct ArrayLiteral {
-    value_exprs: Vec<Box<Expr>>
+    value_exprs: Vec<Box<dyn Expr>>
 }
 
 impl Expr for ArrayLiteral {
@@ -89,13 +89,13 @@ impl Expr for Identifier {
 }
 
 struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32>  {
-    lhs_expr: Box<Expr>,
-    rhs_expr: Box<Expr>,
+    lhs_expr: Box<dyn Expr>,
+    rhs_expr: Box<dyn Expr>,
     func: FnT,
 }
 
 impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
-    fn new<'a>(lhs_expr: Box<Expr>, rhs_expr: Box<Expr>, func: FnT) -> Self {
+    fn new<'a>(lhs_expr: Box<dyn Expr>, rhs_expr: Box<dyn Expr>, func: FnT) -> Self {
         BinaryIntegerOp {lhs_expr: lhs_expr, rhs_expr: rhs_expr, func: func}
     }
 }
@@ -110,8 +110,8 @@ impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
 }
 
 struct BinaryBoolOp<FnT: Fn(bool) -> bool> {
-    lhs_expr: Box<Expr>,
-    rhs_expr: Box<Expr>,
+    lhs_expr: Box<dyn Expr>,
+    rhs_expr: Box<dyn Expr>,
     should_return: FnT,
 }
 
@@ -135,7 +135,7 @@ impl<FnT: Fn(bool) -> bool> Expr for BinaryBoolOp<FnT> {
 
 struct Call {
     func: FunctionId,
-    argument_exprs: Vec<Box<Expr>>,
+    argument_exprs: Vec<Box<dyn Expr>>,
 }
 
 impl Expr for Call {
@@ -147,8 +147,8 @@ impl Expr for Call {
 }
 
 struct Subscription {
-    array_expr: Box<Expr>,
-    index_expr: Box<Expr>,
+    array_expr: Box<dyn Expr>,
+    index_expr: Box<dyn Expr>,
 }
 
 impl Expr for Subscription {
@@ -172,7 +172,7 @@ impl LExpr for Subscription {
 }
 
 struct BoolNot {
-    expr: Box<Expr>,
+    expr: Box<dyn Expr>,
 }
 
 impl Expr for BoolNot {
@@ -182,7 +182,7 @@ impl Expr for BoolNot {
 }
 
 struct UnaryIntegerOp<FnT: Fn(i32) -> i32> {
-    expr: Box<Expr>,
+    expr: Box<dyn Expr>,
     func: FnT,
 }
 
@@ -192,7 +192,7 @@ impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
     }
 }
 
-fn build_expr_list<'a>(globals: &Globals, scope_stack: &ScopeStack, exprs: &'a [ast::Expr]) -> BuildResult<'a, Vec<Box<Expr>>> {
+fn build_expr_list<'a>(globals: &Globals, scope_stack: &ScopeStack, exprs: &'a [ast::Expr]) -> BuildResult<'a, Vec<Box<dyn Expr>>> {
     let mut rv = Vec::new();
     let mut failures = StaticAnalysisErrors::new();
     for expr in exprs {
@@ -203,7 +203,7 @@ fn build_expr_list<'a>(globals: &Globals, scope_stack: &ScopeStack, exprs: &'a [
     (rv, failures)
 }
 
-pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<Expr>> {
+pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<dyn Expr>> {
     use ast::ExprKind::*;
     use ast::BinaryOpCode::*;
     let mut failures = StaticAnalysisErrors::new();
@@ -321,7 +321,7 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
     }
 }
 
-pub fn build_lexpr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<LExpr>> {
+pub fn build_lexpr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<dyn LExpr>> {
     use ast::ExprKind::*;
     let mut failures = StaticAnalysisErrors::new();
     macro_rules! result {

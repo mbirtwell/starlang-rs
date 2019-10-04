@@ -3,7 +3,7 @@ use super::error::BuildResult;
 use super::expressions::{build_expr, build_lexpr, Identifier, evaluate_to_bool};
 
 struct Return {
-    expr: Box<Expr>,
+    expr: Box<dyn Expr>,
 }
 
 impl Statement for Return {
@@ -13,8 +13,8 @@ impl Statement for Return {
 }
 
 struct Assign {
-    lexpr: Box<LExpr>,
-    rexpr: Box<Expr>,
+    lexpr: Box<dyn LExpr>,
+    rexpr: Box<dyn Expr>,
 }
 
 impl Statement for Assign {
@@ -26,7 +26,7 @@ impl Statement for Assign {
 }
 
 struct ExprStatement {
-    expr: Box<Expr>,
+    expr: Box<dyn Expr>,
 }
 
 impl Statement for ExprStatement {
@@ -37,8 +37,8 @@ impl Statement for ExprStatement {
 }
 
 struct IfStatement {
-    expr: Box<Expr>,
-    stmts: Vec<Box<Statement>>,
+    expr: Box<dyn Expr>,
+    stmts: Vec<Box<dyn Statement>>,
 }
 
 impl Statement for IfStatement {
@@ -52,8 +52,8 @@ impl Statement for IfStatement {
 }
 
 struct WhileStatement {
-    expr: Box<Expr>,
-    stmts: Vec<Box<Statement>>,
+    expr: Box<dyn Expr>,
+    stmts: Vec<Box<dyn Statement>>,
 }
 
 impl Statement for WhileStatement {
@@ -67,8 +67,8 @@ impl Statement for WhileStatement {
     }
 }
 
-pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &'a Vec<ast::Statement>) -> BuildResult<'a, Vec<Box<Statement>>> {
-    let mut rv: Vec<Box<Statement>> = Vec::with_capacity(stmts.len());
+pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &'a Vec<ast::Statement>) -> BuildResult<'a, Vec<Box<dyn Statement>>> {
+    let mut rv: Vec<Box<dyn Statement>> = Vec::with_capacity(stmts.len());
     let mut failures = Vec::new();
     macro_rules! expr{
         ( $expr:expr ) => {{

@@ -24,12 +24,12 @@ pub trait Callable {
 }
 
 struct StarLangFunction {
-    stmts: Vec<Box<Statement>>,
+    stmts: Vec<Box<dyn Statement>>,
     max_locals: usize,
 }
 
 struct PlatformFunction {
-    func: Box<Fn(&Globals, Vec<Value>) -> Value>,
+    func: Box<dyn Fn(&Globals, Vec<Value>) -> Value>,
 }
 
 #[derive(Copy,Clone)]
@@ -43,9 +43,9 @@ struct FunctionDeclaration {
 
 pub struct Globals<'a> {
     function_declarations: HashMap<String, FunctionDeclaration>,
-    functions: Vec<Box<Callable>>,
-    input: RefCell<io::Bytes<&'a mut io::Read>>,
-    output: RefCell<&'a mut io::Write>,
+    functions: Vec<Box<dyn Callable>>,
+    input: RefCell<io::Bytes<&'a mut dyn io::Read>>,
+    output: RefCell<&'a mut dyn io::Write>,
 }
 
 fn starlang_new(_globals: &Globals, args: Vec<Value>) -> Value {
@@ -95,7 +95,7 @@ fn starlang_exit(_globals: &Globals, args: Vec<Value>) -> Value {
 }
 
 impl<'b> Globals<'b> {
-    pub fn new<'a>(input: &'a mut io::Read, output: &'a mut io::Write) -> Globals<'a> {
+    pub fn new<'a>(input: &'a mut dyn io::Read, output: &'a mut dyn io::Write) -> Globals<'a> {
         let mut rv = Globals {
             function_declarations: HashMap::new(),
             functions: Vec::new(),
@@ -119,10 +119,10 @@ impl<'b> Globals<'b> {
         );
     }
     pub fn has_main(&self) -> bool { self.function_declarations.contains_key("main") }
-    pub fn get_main(&self) -> &Callable {
+    pub fn get_main(&self) -> &dyn Callable {
         self.lookup_func(self.reference_func("main").expect("No main defined"))
     }
-    pub fn define_func(&mut self, name: &str, stmts: Vec<Box<Statement>>, max_locals: usize) {
+    pub fn define_func(&mut self, name: &str, stmts: Vec<Box<dyn Statement>>, max_locals: usize) {
         match self.function_declarations.get(name) {
             Some(ref decl) => {
                 if self.functions.len() != decl.id.idx {
@@ -139,13 +139,13 @@ impl<'b> Globals<'b> {
     pub fn reference_func(&self, name: &str) -> Option<FunctionId> {
         self.function_declarations.get(name).map(|v| v.id)
     }
-    pub fn lookup_func(&self, func_id: FunctionId) -> &Callable {
+    pub fn lookup_func(&self, func_id: FunctionId) -> &dyn Callable {
         &*self.functions[func_id.idx]
     }
     fn next_func_id(&self) -> FunctionId {
         FunctionId { idx: self.function_declarations.len() }
     }
-    fn define_platform_func(&mut self, name: &str, func: Box<Fn(&Globals, Vec<Value>) -> Value>) {
+    fn define_platform_func(&mut self, name: &str, func: Box<dyn Fn(&Globals, Vec<Value>) -> Value>) {
         let id = self.next_func_id();
         self.function_declarations.insert(
             name.to_string(),
@@ -233,7 +233,7 @@ impl Callable for StarLangFunction {
     }
 }
 
-pub fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<Statement>]) -> FunctionState {
+pub fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<dyn Statement>]) -> FunctionState {
     for stmt in stmts {
         match stmt.do_stmt(globals, locals) {
             FunctionState::Return(val) => return FunctionState::Return(val),

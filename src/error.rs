@@ -37,11 +37,11 @@ macro_rules! error {
     };
 }
 
-pub fn write_parse_error(f: &mut Write, err: ParseError, contents: &FileContents) -> OuterResult<()> {
+pub fn write_parse_error(f: &mut dyn Write, err: ParseError, contents: &FileContents) -> OuterResult<()> {
     write_parse_error_inner(f, err, contents).map_err(|_| OuterError::OutputError )
 }
 
-fn write_parse_error_inner(f: &mut Write, err: ParseError, contents: &FileContents) -> io::Result<()> {
+fn write_parse_error_inner(f: &mut dyn Write, err: ParseError, contents: &FileContents) -> io::Result<()> {
     use lalrpop_util::ParseError::*;
     match err {
         InvalidToken{ ref location } => {
@@ -81,11 +81,11 @@ fn write_parse_error_inner(f: &mut Write, err: ParseError, contents: &FileConten
     Ok(())
 }
 
-pub fn write_exec_error<'a>(f: &mut Write, err: &'a ExecError, contents: &'a FileContents) -> OuterResult<()> {
+pub fn write_exec_error<'a>(f: &mut dyn Write, err: &'a ExecError, contents: &'a FileContents) -> OuterResult<()> {
     write_exec_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
 }
 
-fn write_exec_error_inner<'a>(f: &mut Write, err: &'a ExecError, contents: &'a FileContents) -> io::Result<()> {
+fn write_exec_error_inner<'a>(f: &mut dyn Write, err: &'a ExecError, contents: &'a FileContents) -> io::Result<()> {
     match *err {
         ExecError::StaticAnalysisFailed(ref errs) => {
             for static_err in errs {
@@ -97,7 +97,7 @@ fn write_exec_error_inner<'a>(f: &mut Write, err: &'a ExecError, contents: &'a F
     Ok(())
 }
 
-fn write_static_analysis_err<'a>(f: &mut Write, err: &'a StaticAnalysisError, contents: &'a FileContents) -> io::Result<()> {
+fn write_static_analysis_err<'a>(f: &mut dyn Write, err: &'a StaticAnalysisError, contents: &'a FileContents) -> io::Result<()> {
     match *err {
         StaticAnalysisError::CallUnknownFunction(fname, start, end) => {
             error!(f, "Call to unknown function {:?}", fname)?;
@@ -107,7 +107,7 @@ fn write_static_analysis_err<'a>(f: &mut Write, err: &'a StaticAnalysisError, co
     Ok(())
 }
 
-fn write_location(f: &mut Write, location: &Location, contents: &FileContents) -> io::Result<()> {
+fn write_location(f: &mut dyn Write, location: &Location, contents: &FileContents) -> io::Result<()> {
     write_location_at(f, location)?;
     if let Some(file_content) = contents.get(location.file_name) {
         let line_start = find_line_start(location, file_content);
@@ -119,7 +119,7 @@ fn write_location(f: &mut Write, location: &Location, contents: &FileContents) -
     Ok(())
 }
 
-fn write_locations(f: &mut Write, start: &Location, end: &Location, contents: &FileContents) -> io::Result<()> {
+fn write_locations(f: &mut dyn Write, start: &Location, end: &Location, contents: &FileContents) -> io::Result<()> {
     write_location_at(f, start)?;
     if let Some(file_content) = contents.get(start.file_name) {
         let line_start = find_line_start(start, file_content);
@@ -157,7 +157,7 @@ fn write_locations(f: &mut Write, start: &Location, end: &Location, contents: &F
     Ok(())
 }
 
-fn write_location_at(f: &mut Write, location: &Location) -> io::Result<()> {
+fn write_location_at(f: &mut dyn Write, location: &Location) -> io::Result<()> {
     writeln!(f, "At: {}:{}", location.file_name, location.line)
 }
 
@@ -175,21 +175,21 @@ fn find_line_end(location: &Location, file_content: &str) -> usize {
             .unwrap_or(file_content.len())
 }
 
-fn write_previous_line(f: &mut Write, location: &Location, line_start: usize, file_content: &str) -> io::Result<()> {
+fn write_previous_line(f: &mut dyn Write, location: &Location, line_start: usize, file_content: &str) -> io::Result<()> {
     if let Some(prev_line)  = file_content[..line_start].lines().next_back() {
         writeln!(f, "{} |{}",  location.line - 1, prev_line)?;
     }
     Ok(())
 }
 
-fn write_next_line(f: &mut Write, location: &Location, line_end: usize, file_content: &str) -> io::Result<()> {
+fn write_next_line(f: &mut dyn Write, location: &Location, line_end: usize, file_content: &str) -> io::Result<()> {
     if let Some(next_line) = file_content[line_end..].lines().skip(1).next() {
         writeln!(f, "{} |{}",  location.line + 1, next_line)?;
     }
     Ok(())
 }
 
-fn write_single_line_error(f: &mut Write, start: &Location, line_start: usize, line_end: usize, len: usize, file_content: &str) -> io::Result<()> {
+fn write_single_line_error(f: &mut dyn Write, start: &Location, line_start: usize, line_end: usize, len: usize, file_content: &str) -> io::Result<()> {
     writeln!(
         f, "{} |{}{}{}",
         start.line,

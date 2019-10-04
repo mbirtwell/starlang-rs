@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 extern crate ansi_term;
 extern crate lalrpop_util;
+#[allow(unused_imports)]  // used by tests
 #[macro_use]
 extern crate indoc;
 
@@ -12,8 +13,8 @@ extern crate argparse;
 use argparse::{ArgumentParser, Store, Collect};
 
 pub mod ast;
+#[allow(unused_parens)]
 pub mod grammar;
-mod comment_stripper;
 mod exec_tree;
 mod lexer;
 use lexer::Matcher;

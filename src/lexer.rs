@@ -119,7 +119,7 @@ impl<'input> Default for Location<'input> {
 
 fn is_identifier_char(c: char) -> bool{
     match c {
-        'a'...'z'|'A'...'Z'|'0'...'9'|'_' => true,
+        'a'..='z'|'A'..='Z'|'0'..='9'|'_' => true,
         _ => false,
     }
 }
@@ -212,10 +212,10 @@ impl<'input> Matcher<'input> {
                 '%' => wt!(Percent),
                 '/' => wt!(ForwardSlash),
                 '='|'<'|'>'|'!' => result!(PunctuationStart),
-                '0'...'9' => result!(NumberStart),
+                '0'..='9' => result!(NumberStart),
                 '\'' => result!(CharStart),
                 '"' => result!(StringStart),
-                'a'...'z'|'A'...'Z'|'_' => result!(IdentifierOrKeyWordStart),
+                'a'..='z'|'A'..='Z'|'_' => result!(IdentifierOrKeyWordStart),
                 _ => if in_comment {
                     self.location.line_offset_chars += 1
                 } else {
