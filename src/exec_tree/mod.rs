@@ -1,8 +1,8 @@
-pub mod error;
 mod base;
+pub mod error;
 mod expressions;
-mod statements;
 mod main;
+mod statements;
 
 pub use self::main::exec;
 

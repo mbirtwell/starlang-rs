@@ -1,9 +1,9 @@
-use std::process::exit;
-use std::io::{self,Read};
-use std::collections::HashMap;
-use std::rc::Rc;
-use std::cell::RefCell;
 pub use super::super::ast;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::io::{self, Read};
+use std::process::exit;
+use std::rc::Rc;
 
 pub type Array = Rc<RefCell<Box<[Value]>>>;
 
@@ -32,7 +32,7 @@ struct PlatformFunction {
     func: Box<dyn Fn(&Globals, Vec<Value>) -> Value>,
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct FunctionId {
     idx: usize,
 }
@@ -50,9 +50,7 @@ pub struct Globals<'a> {
 
 fn starlang_new(_globals: &Globals, args: Vec<Value>) -> Value {
     match args[0] {
-        Value::Integer(n) => {
-            Value::from(vec![Value::Integer(0); n as usize])
-        },
+        Value::Integer(n) => Value::from(vec![Value::Integer(0); n as usize]),
         _ => {
             panic!("platform function 'new' expected int but recieved array");
         }
@@ -61,9 +59,12 @@ fn starlang_new(_globals: &Globals, args: Vec<Value>) -> Value {
 
 fn starlang_getc(globals: &Globals, _args: Vec<Value>) -> Value {
     Value::Integer(
-        globals.input.borrow_mut().next().map(
-            |result| result.unwrap() as i32
-        ).unwrap_or(-1)
+        globals
+            .input
+            .borrow_mut()
+            .next()
+            .map(|result| result.unwrap() as i32)
+            .unwrap_or(-1),
     )
 }
 
@@ -73,7 +74,7 @@ fn starlang_putc(globals: &Globals, args: Vec<Value>) -> Value {
             let output = [c as u8];
             globals.output.borrow_mut().write(&output).unwrap();
             Value::Integer(0)
-        },
+        }
         _ => {
             panic!("platform function 'new' expected int but recieved array");
         }
@@ -111,14 +112,12 @@ impl<'b> Globals<'b> {
     }
     pub fn declare_func(&mut self, func: &ast::Function) {
         let id = self.next_func_id();
-        self.function_declarations.insert(
-            func.name.clone(),
-            FunctionDeclaration {
-                id: id,
-            },
-        );
+        self.function_declarations
+            .insert(func.name.clone(), FunctionDeclaration { id: id });
     }
-    pub fn has_main(&self) -> bool { self.function_declarations.contains_key("main") }
+    pub fn has_main(&self) -> bool {
+        self.function_declarations.contains_key("main")
+    }
     pub fn get_main(&self) -> &dyn Callable {
         self.lookup_func(self.reference_func("main").expect("No main defined"))
     }
@@ -126,13 +125,16 @@ impl<'b> Globals<'b> {
         match self.function_declarations.get(name) {
             Some(ref decl) => {
                 if self.functions.len() != decl.id.idx {
-                    panic!("Attempting to define function {} out of declaration order.", name)
+                    panic!(
+                        "Attempting to define function {} out of declaration order.",
+                        name
+                    )
                 }
                 self.functions.push(Box::new(StarLangFunction {
                     stmts: stmts,
                     max_locals: max_locals,
                 }))
-            },
+            }
             None => unreachable!("Attempting to define undeclared function {}", name),
         }
     }
@@ -143,22 +145,26 @@ impl<'b> Globals<'b> {
         &*self.functions[func_id.idx]
     }
     fn next_func_id(&self) -> FunctionId {
-        FunctionId { idx: self.function_declarations.len() }
-    }
-    fn define_platform_func(&mut self, name: &str, func: Box<dyn Fn(&Globals, Vec<Value>) -> Value>) {
-        let id = self.next_func_id();
-        self.function_declarations.insert(
-            name.to_string(),
-            FunctionDeclaration {
-                id: id,
-            },
-        );
-        if self.functions.len() != id.idx {
-            panic!("Attempting to define function {} out of declaration order.", name)
+        FunctionId {
+            idx: self.function_declarations.len(),
         }
-        self.functions.push(Box::new(PlatformFunction {
-            func: func,
-        }))
+    }
+    fn define_platform_func(
+        &mut self,
+        name: &str,
+        func: Box<dyn Fn(&Globals, Vec<Value>) -> Value>,
+    ) {
+        let id = self.next_func_id();
+        self.function_declarations
+            .insert(name.to_string(), FunctionDeclaration { id: id });
+        if self.functions.len() != id.idx {
+            panic!(
+                "Attempting to define function {} out of declaration order.",
+                name
+            )
+        }
+        self.functions
+            .push(Box::new(PlatformFunction { func: func }))
     }
 }
 
@@ -191,7 +197,11 @@ pub struct ScopeStack {
 
 impl ScopeStack {
     pub fn new() -> ScopeStack {
-        ScopeStack {scopes: vec![HashMap::new()], current_locals: 0, max_locals: 0}
+        ScopeStack {
+            scopes: vec![HashMap::new()],
+            current_locals: 0,
+            max_locals: 0,
+        }
     }
 
     pub fn declare(&mut self, name: &str) -> usize {
@@ -207,7 +217,7 @@ impl ScopeStack {
     pub fn get(&self, name: &str) -> usize {
         for scope in self.scopes.iter().rev() {
             if let Some(idx) = scope.get(name) {
-                return *idx
+                return *idx;
             }
         }
         panic!("Attempt to access varaible '{}' when not in scope", name)
@@ -229,17 +239,20 @@ impl Callable for StarLangFunction {
             FunctionState::Return(val) => val,
             FunctionState::NoReturn => Value::Integer(0),
         }
-
     }
 }
 
-pub fn exec_block(globals: &Globals, locals: &mut Locals, stmts: &[Box<dyn Statement>]) -> FunctionState {
+pub fn exec_block(
+    globals: &Globals,
+    locals: &mut Locals,
+    stmts: &[Box<dyn Statement>],
+) -> FunctionState {
     for stmt in stmts {
         match stmt.do_stmt(globals, locals) {
             FunctionState::Return(val) => return FunctionState::Return(val),
-            FunctionState::NoReturn => {},
+            FunctionState::NoReturn => {}
         }
-    };
+    }
     FunctionState::NoReturn
 }
 

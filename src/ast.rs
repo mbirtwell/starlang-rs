@@ -1,7 +1,6 @@
-use std::fmt::{Debug, Formatter, Error};
+use std::fmt::{Debug, Error, Formatter};
 
 use lexer::Location;
-
 
 pub struct Function<'a> {
     pub name: String,
@@ -11,7 +10,11 @@ pub struct Function<'a> {
 
 impl<'a> Function<'a> {
     pub fn new(name: &str, arguments: Vec<&'a str>, stmts: Vec<Statement<'a>>) -> Function<'a> {
-        return Function {name: name.into(), arguments: arguments, stmts: stmts};
+        return Function {
+            name: name.into(),
+            arguments: arguments,
+            stmts: stmts,
+        };
     }
 }
 
@@ -56,15 +59,15 @@ macro_rules! cons {
 }
 
 impl<'a> Expr<'a> {
-    cons!{new_binary_op(lhs:Self, op:BinaryOpCode, rhs:Self ) => BinaryOp}
-    cons!{new_unary_op(op: UnaryOpCode, expr: Self) => UnaryOp}
-    cons!{new_subscription(array_expr: Self, subscript_expr: Self) => Subscription}
-    cons!{new_number(n: i32) => Number}
-    cons!{new_string(s: &'a str) => String}
-    cons!{new_char(c: char) => Char}
-    cons!{new_array(exprs: Vec<Self>) => Array}
-    cons!{new_call(func: &'a str, exprs: Vec<Self>) => Call}
-    cons!{new_identifier(name: &'a str) => Identifier}
+    cons! {new_binary_op(lhs:Self, op:BinaryOpCode, rhs:Self ) => BinaryOp}
+    cons! {new_unary_op(op: UnaryOpCode, expr: Self) => UnaryOp}
+    cons! {new_subscription(array_expr: Self, subscript_expr: Self) => Subscription}
+    cons! {new_number(n: i32) => Number}
+    cons! {new_string(s: &'a str) => String}
+    cons! {new_char(c: char) => Char}
+    cons! {new_array(exprs: Vec<Self>) => Array}
+    cons! {new_call(func: &'a str, exprs: Vec<Self>) => Call}
+    cons! {new_identifier(name: &'a str) => Identifier}
 }
 
 #[derive(Copy, Clone)]
@@ -111,7 +114,7 @@ fn write_id_list(fmt: &mut Formatter, ids: &Vec<&str>) -> Result<(), Error> {
                 fmt.write_str(", ")?;
                 fmt.write_str(id)?;
             }
-        },
+        }
         None => (),
     }
     fmt.write_char(']')
@@ -132,10 +135,16 @@ impl<'a> Debug for Statement<'a> {
         match *self {
             Return(ref expr) => write!(fmt, "Return({:?})", expr),
             Expr(ref expr) => write!(fmt, "Expr({:?})", expr),
-            Assign(ref target, ref expr) => write!(fmt, "Assign(target: {:?}, expr: {:?})", target, expr),
-            Declare(ref id, ref expr) => write!(fmt, "Declare(identifier: {}, expr: {:?})", id, expr),
+            Assign(ref target, ref expr) => {
+                write!(fmt, "Assign(target: {:?}, expr: {:?})", target, expr)
+            }
+            Declare(ref id, ref expr) => {
+                write!(fmt, "Declare(identifier: {}, expr: {:?})", id, expr)
+            }
             If(ref test, ref block) => write!(fmt, "If(test: {:?}, block: {:?})", test, block),
-            While(ref test, ref block) => write!(fmt, "While(test: {:?}, block: {:?})", test, block)
+            While(ref test, ref block) => {
+                write!(fmt, "While(test: {:?}, block: {:?})", test, block)
+            }
         }
     }
 }
@@ -156,11 +165,15 @@ impl<'a> Debug for ExprKind<'a> {
             Array(ref exprs) => write!(fmt, "Array({:?})", exprs),
             BinaryOp(ref l, op, ref r) => write!(fmt, "BinaryOp({:?} {:?} {:?})", l, op, r),
             UnaryOp(op, ref expr) => write!(fmt, "UnaryOp({:?} {:?})", op, expr),
-            Call(ref func, ref args) => write!(fmt, "Call(function: {}, arguments: {:?})", func, args),
-            Identifier(ref name) => write!(fmt, "Identifier({})", name),
-            Subscription(ref array_expr, ref subscript_expr) => {
-                write!(fmt, "Subscription(array_expr: {:?}, subscript_expr: {:?})", array_expr, subscript_expr)
+            Call(ref func, ref args) => {
+                write!(fmt, "Call(function: {}, arguments: {:?})", func, args)
             }
+            Identifier(ref name) => write!(fmt, "Identifier({})", name),
+            Subscription(ref array_expr, ref subscript_expr) => write!(
+                fmt,
+                "Subscription(array_expr: {:?}, subscript_expr: {:?})",
+                array_expr, subscript_expr
+            ),
             Error => write!(fmt, "error"),
         }
     }

@@ -1,9 +1,9 @@
+use ansi_term::Colour::Red;
+use exec_tree::error::*;
+use lalrpop_util;
+use lexer::{self, Location, Tok};
 use std;
 use std::io::{self, Write};
-use lalrpop_util;
-use ansi_term::Colour::{Red};
-use lexer::{self, Location, Tok};
-use exec_tree::error::*;
 
 use super::FileContents;
 
@@ -16,9 +16,8 @@ pub enum OuterError {
     FailedInitAnsiTerm(u64),
 }
 pub type OuterResult<T> = std::result::Result<T, OuterError>;
-pub type ParseError<'input> = lalrpop_util::ParseError<
-    Location<'input>, Tok<'input>, lexer::Error<'input>
->;
+pub type ParseError<'input> =
+    lalrpop_util::ParseError<Location<'input>, Tok<'input>, lexer::Error<'input>>;
 
 impl<'a> From<ExecError<'a>> for OuterError {
     fn from(value: ExecError<'a>) -> OuterError {
@@ -37,18 +36,29 @@ macro_rules! error {
     };
 }
 
-pub fn write_parse_error(f: &mut dyn Write, err: ParseError, contents: &FileContents) -> OuterResult<()> {
-    write_parse_error_inner(f, err, contents).map_err(|_| OuterError::OutputError )
+pub fn write_parse_error(
+    f: &mut dyn Write,
+    err: ParseError,
+    contents: &FileContents,
+) -> OuterResult<()> {
+    write_parse_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
 }
 
-fn write_parse_error_inner(f: &mut dyn Write, err: ParseError, contents: &FileContents) -> io::Result<()> {
+fn write_parse_error_inner(
+    f: &mut dyn Write,
+    err: ParseError,
+    contents: &FileContents,
+) -> io::Result<()> {
     use lalrpop_util::ParseError::*;
     match err {
-        InvalidToken{ ref location } => {
+        InvalidToken { ref location } => {
             error!(f, "Invalid token")?;
             write_location(f, location, contents)?;
-        },
-        UnrecognizedToken{ ref token, ref expected } => {
+        }
+        UnrecognizedToken {
+            ref token,
+            ref expected,
+        } => {
             match *token {
                 Some((ref start, ref token, ref end)) => {
                     error!(f, "Unrecognized token {:?}", token)?;
@@ -68,10 +78,11 @@ fn write_parse_error_inner(f: &mut dyn Write, err: ParseError, contents: &FileCo
                 }
             }
         }
-        ExtraToken { token: (ref start, ref token, ref end) } => {
+        ExtraToken {
+            token: (ref start, ref token, ref end),
+        } => {
             error!(f, "Extra token {:?}", token)?;
             write_locations(f, start, end, contents)?;
-
         }
         User { ref error } => {
             error!(f, "{}", error.kind)?;
@@ -81,11 +92,19 @@ fn write_parse_error_inner(f: &mut dyn Write, err: ParseError, contents: &FileCo
     Ok(())
 }
 
-pub fn write_exec_error<'a>(f: &mut dyn Write, err: &'a ExecError, contents: &'a FileContents) -> OuterResult<()> {
+pub fn write_exec_error<'a>(
+    f: &mut dyn Write,
+    err: &'a ExecError,
+    contents: &'a FileContents,
+) -> OuterResult<()> {
     write_exec_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
 }
 
-fn write_exec_error_inner<'a>(f: &mut dyn Write, err: &'a ExecError, contents: &'a FileContents) -> io::Result<()> {
+fn write_exec_error_inner<'a>(
+    f: &mut dyn Write,
+    err: &'a ExecError,
+    contents: &'a FileContents,
+) -> io::Result<()> {
     match *err {
         ExecError::StaticAnalysisFailed(ref errs) => {
             for static_err in errs {
@@ -97,7 +116,11 @@ fn write_exec_error_inner<'a>(f: &mut dyn Write, err: &'a ExecError, contents: &
     Ok(())
 }
 
-fn write_static_analysis_err<'a>(f: &mut dyn Write, err: &'a StaticAnalysisError, contents: &'a FileContents) -> io::Result<()> {
+fn write_static_analysis_err<'a>(
+    f: &mut dyn Write,
+    err: &'a StaticAnalysisError,
+    contents: &'a FileContents,
+) -> io::Result<()> {
     match *err {
         StaticAnalysisError::CallUnknownFunction(fname, start, end) => {
             error!(f, "Call to unknown function {:?}", fname)?;
@@ -107,7 +130,11 @@ fn write_static_analysis_err<'a>(f: &mut dyn Write, err: &'a StaticAnalysisError
     Ok(())
 }
 
-fn write_location(f: &mut dyn Write, location: &Location, contents: &FileContents) -> io::Result<()> {
+fn write_location(
+    f: &mut dyn Write,
+    location: &Location,
+    contents: &FileContents,
+) -> io::Result<()> {
     write_location_at(f, location)?;
     if let Some(file_content) = contents.get(location.file_name) {
         let line_start = find_line_start(location, file_content);
@@ -119,36 +146,52 @@ fn write_location(f: &mut dyn Write, location: &Location, contents: &FileContent
     Ok(())
 }
 
-fn write_locations(f: &mut dyn Write, start: &Location, end: &Location, contents: &FileContents) -> io::Result<()> {
+fn write_locations(
+    f: &mut dyn Write,
+    start: &Location,
+    end: &Location,
+    contents: &FileContents,
+) -> io::Result<()> {
     write_location_at(f, start)?;
     if let Some(file_content) = contents.get(start.file_name) {
         let line_start = find_line_start(start, file_content);
         write_previous_line(f, start, line_start, file_content)?;
         let end_line_end = find_line_end(end, file_content);
         if start.line == end.line {
-            write_single_line_error(f, start, line_start, end_line_end, end.file_offset_bytes - start.file_offset_bytes, file_content)?;
+            write_single_line_error(
+                f,
+                start,
+                line_start,
+                end_line_end,
+                end.file_offset_bytes - start.file_offset_bytes,
+                file_content,
+            )?;
         } else {
             let end_start_line = find_line_end(start, file_content);
             let start_end_line = find_line_start(end, file_content);
             writeln!(
-                f, "{} |{}{}",
+                f,
+                "{} |{}{}",
                 start.line,
                 &file_content[line_start..start.file_offset_bytes],
-                Red.bold().paint(&file_content[start.file_offset_bytes..end_start_line]),
+                Red.bold()
+                    .paint(&file_content[start.file_offset_bytes..end_start_line]),
             )?;
             if start.line + 1 != end.line {
-                for (lineno, line) in file_content[end_start_line..start_end_line].lines().skip(1).enumerate() {
-                    writeln!(
-                        f, "{} |{}",
-                        start.line + lineno + 1,
-                        Red.bold().paint(line),
-                    )?;
+                for (lineno, line) in file_content[end_start_line..start_end_line]
+                    .lines()
+                    .skip(1)
+                    .enumerate()
+                {
+                    writeln!(f, "{} |{}", start.line + lineno + 1, Red.bold().paint(line),)?;
                 }
             }
             writeln!(
-                f, "{} |{}{}",
+                f,
+                "{} |{}{}",
                 end.line,
-                Red.bold().paint(&file_content[start_end_line..end.file_offset_bytes]),
+                Red.bold()
+                    .paint(&file_content[start_end_line..end.file_offset_bytes]),
                 &file_content[end.file_offset_bytes..end_line_end],
             )?;
         }
@@ -170,41 +213,60 @@ fn find_line_start(location: &Location, file_content: &str) -> usize {
 
 fn find_line_end(location: &Location, file_content: &str) -> usize {
     file_content[location.file_offset_bytes..]
-            .find(|c| c == '\n' || c == '\r')
-            .map(|v| location.file_offset_bytes + v)
-            .unwrap_or(file_content.len())
+        .find(|c| c == '\n' || c == '\r')
+        .map(|v| location.file_offset_bytes + v)
+        .unwrap_or(file_content.len())
 }
 
-fn write_previous_line(f: &mut dyn Write, location: &Location, line_start: usize, file_content: &str) -> io::Result<()> {
-    if let Some(prev_line)  = file_content[..line_start].lines().next_back() {
-        writeln!(f, "{} |{}",  location.line - 1, prev_line)?;
+fn write_previous_line(
+    f: &mut dyn Write,
+    location: &Location,
+    line_start: usize,
+    file_content: &str,
+) -> io::Result<()> {
+    if let Some(prev_line) = file_content[..line_start].lines().next_back() {
+        writeln!(f, "{} |{}", location.line - 1, prev_line)?;
     }
     Ok(())
 }
 
-fn write_next_line(f: &mut dyn Write, location: &Location, line_end: usize, file_content: &str) -> io::Result<()> {
+fn write_next_line(
+    f: &mut dyn Write,
+    location: &Location,
+    line_end: usize,
+    file_content: &str,
+) -> io::Result<()> {
     if let Some(next_line) = file_content[line_end..].lines().skip(1).next() {
-        writeln!(f, "{} |{}",  location.line + 1, next_line)?;
+        writeln!(f, "{} |{}", location.line + 1, next_line)?;
     }
     Ok(())
 }
 
-fn write_single_line_error(f: &mut dyn Write, start: &Location, line_start: usize, line_end: usize, len: usize, file_content: &str) -> io::Result<()> {
+fn write_single_line_error(
+    f: &mut dyn Write,
+    start: &Location,
+    line_start: usize,
+    line_end: usize,
+    len: usize,
+    file_content: &str,
+) -> io::Result<()> {
     writeln!(
-        f, "{} |{}{}{}",
+        f,
+        "{} |{}{}{}",
         start.line,
         &file_content[line_start..start.file_offset_bytes],
-        Red.bold().paint(&file_content[start.file_offset_bytes..start.file_offset_bytes+len]),
-        &file_content[start.file_offset_bytes+len..line_end],
+        Red.bold()
+            .paint(&file_content[start.file_offset_bytes..start.file_offset_bytes + len]),
+        &file_content[start.file_offset_bytes + len..line_end],
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use super::super::lexer::{Matcher, Location};
     use super::super::grammar::parse_Programme;
+    use super::super::lexer::{Location, Matcher};
     use super::*;
+    use std::collections::HashMap;
 
     macro_rules! test_parse_error {
         ($test_name:ident, $input:expr, $expected:expr) => {
@@ -226,7 +288,7 @@ mod tests {
         };
     }
 
-    test_parse_error!{eof_in_string_literal, "\
+    test_parse_error! {eof_in_string_literal, "\
 function main() {
     let a = \"sdsds
 }
@@ -238,7 +300,7 @@ At: test.sl:2
 3 |}}
 ", Red.paint("error"), Red.bold().paint("\""))}
 
-    test_parse_error!{windows_line_endings, "\
+    test_parse_error! {windows_line_endings, "\
 function main() {\r
     let a = \"sdsds\r
 }\r
@@ -250,7 +312,7 @@ At: test.sl:2
 3 |}}
 ", Red.paint("error"), Red.bold().paint("\""))}
 
-    test_parse_error!{no_surrounding_lines, "\
+    test_parse_error! {no_surrounding_lines, "\
 function main() { let a = \"sdsds }
 ", format!("\
 {}: Found end of file whilst looking for end of string literal
@@ -258,7 +320,7 @@ At: test.sl:1
 1 |function main() {{ let a = {}sdsds }}
 ", Red.paint("error"), Red.bold().paint("\""))}
 
-    test_parse_error!{missing_curly, "\
+    test_parse_error! {missing_curly, "\
 function main()
     return 1 + 3;
 }
@@ -287,27 +349,27 @@ Expected one of \"{{\"
                     &Location::new("test.sl", $start_line, $start_line_offset, $start_offset),
                     &Location::new("test.sl", $end_line, $end_line_offset, $end_offset),
                     &contents,
-                ).unwrap();
+                )
+                .unwrap();
                 assert_eq!(String::from_utf8(output).unwrap(), $expected);
             }
-
         };
-    }    
-    
-    test_write_lines!{error_across_two_lines, "\
+    }
+
+    test_write_lines! {error_across_two_lines, "\
 if something() +
     somethingelse() {
     # code here
 }
 ",
-(1, 3, 3),
-(2, 18, 36), format!("\
+    (1, 3, 3),
+    (2, 18, 36), format!("\
 At: test.sl:1
 1 |if {}
 2 |{} {{
 3 |    # code here
 ", Red.bold().paint("something() +"), Red.bold().paint("    somethingelse()"))
-    }
+        }
 
     test_write_lines! {error_across_four_lines, "\
 # X
@@ -318,8 +380,8 @@ if a and
     # code here
 }
 ",
-(2, 3, 7),
-(5, 5, 38), format!("\
+    (2, 3, 7),
+    (5, 5, 38), format!("\
 At: test.sl:2
 1 |# X
 2 |if {}
@@ -328,10 +390,10 @@ At: test.sl:2
 5 |{} {{
 6 |    # code here
 ", Red.bold().paint("a and"), Red.bold().paint("    b and"),
-    Red.bold().paint("    c and"), Red.bold().paint("    d"))
-    }
+        Red.bold().paint("    c and"), Red.bold().paint("    d"))
+        }
 
-    test_write_lines!{error_surrounded_by_blank_lines, "\
+    test_write_lines! {error_surrounded_by_blank_lines, "\
 # a
 
 if something() {
@@ -339,13 +401,13 @@ if something() {
     # code here
 }
 ",
-(3, 3, 8),
-(3, 14, 19), format!("\
+    (3, 3, 8),
+    (3, 14, 19), format!("\
 At: test.sl:3
 2 |
 3 |if {} {{
 4 |
 ", Red.bold().paint("something()"))
-    }
+        }
 
 }

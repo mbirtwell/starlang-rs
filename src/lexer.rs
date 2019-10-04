@@ -66,24 +66,24 @@ impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::ErrorKind::*;
         match *self {
-            IllegalChar(c) => {
-                write!(f, "Illegal character '{}' found", c)
-            }
-            LonelyExclamation => {
-                write!(f, "Encountered illegal '!' which is only valid as part of '!='")
-            }
-            EofInCharLiteral => {
-                write!(f, "Found end of file whilst looking for end of character literal")
-            }
-            BadCharLiteral => {
-                write!(f, "Unterminated or oversized character literal")
-            }
-            EofInString => {
-                write!(f, "Found end of file whilst looking for end of string literal")
-            }
-            MisPlacedCharacterReturn => {
-                write!(f, "Character return '\\r' without following line feed '\\n'")
-            }
+            IllegalChar(c) => write!(f, "Illegal character '{}' found", c),
+            LonelyExclamation => write!(
+                f,
+                "Encountered illegal '!' which is only valid as part of '!='"
+            ),
+            EofInCharLiteral => write!(
+                f,
+                "Found end of file whilst looking for end of character literal"
+            ),
+            BadCharLiteral => write!(f, "Unterminated or oversized character literal"),
+            EofInString => write!(
+                f,
+                "Found end of file whilst looking for end of string literal"
+            ),
+            MisPlacedCharacterReturn => write!(
+                f,
+                "Character return '\\r' without following line feed '\\n'"
+            ),
         }
     }
 }
@@ -97,12 +97,17 @@ pub struct Location<'input> {
 }
 
 impl<'input> Location<'input> {
-    pub fn new(file_name: &'input str, line: usize, line_offset_chars: usize, file_offset_bytes: usize) -> Location {
+    pub fn new(
+        file_name: &'input str,
+        line: usize,
+        line_offset_chars: usize,
+        file_offset_bytes: usize,
+    ) -> Location {
         Location {
             file_name: file_name,
             line: line,
             line_offset_chars: line_offset_chars,
-            file_offset_bytes: file_offset_bytes
+            file_offset_bytes: file_offset_bytes,
         }
     }
     fn new_line(&mut self) {
@@ -117,9 +122,9 @@ impl<'input> Default for Location<'input> {
     }
 }
 
-fn is_identifier_char(c: char) -> bool{
+fn is_identifier_char(c: char) -> bool {
     match c {
-        'a'..='z'|'A'..='Z'|'0'..='9'|'_' => true,
+        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => true,
         _ => false,
     }
 }
@@ -156,8 +161,8 @@ impl<'input> Matcher<'input> {
     }
 
     fn find_token_start(&mut self) -> FindTokenStartResult<'input> {
-        use self::Tok::*;
         use self::FindTokenStartState::*;
+        use self::Tok::*;
         let mut expect_line_feed = false;
         let mut in_comment = false;
         for (offset, c) in self.text.char_indices() {
@@ -166,34 +171,40 @@ impl<'input> Matcher<'input> {
                     if in_comment {
                         self.location.line_offset_chars += 1;
                     } else {
-                        return FindTokenStartResult { offset: offset, state: $state }
+                        return FindTokenStartResult {
+                            offset: offset,
+                            state: $state,
+                        };
                     }
-                }
+                };
             }
             macro_rules! wt {
                 ( $t:ident) => {
                     result!(WholeToken($t))
-                }
+                };
             }
             if expect_line_feed && c != '\n' {
                 self.location.line_offset_chars -= 1;
-                return FindTokenStartResult { offset: offset - 1, state: Err(ErrorKind::MisPlacedCharacterReturn)};
+                return FindTokenStartResult {
+                    offset: offset - 1,
+                    state: Err(ErrorKind::MisPlacedCharacterReturn),
+                };
             }
             match c {
-                ' '|'\t' => self.location.line_offset_chars += 1,
+                ' ' | '\t' => self.location.line_offset_chars += 1,
                 '\r' => {
                     expect_line_feed = true;
                     self.location.line_offset_chars += 1
-                },
+                }
                 '\n' => {
                     self.location.new_line();
                     expect_line_feed = false;
                     in_comment = false;
-                },
+                }
                 '#' => {
                     self.location.line_offset_chars += 1;
                     in_comment = true;
-                },
+                }
                 '(' => wt!(LeftParen),
                 ')' => wt!(RightParen),
                 '{' => wt!(LeftBrace),
@@ -211,19 +222,24 @@ impl<'input> Matcher<'input> {
                 '*' => wt!(Asterisk),
                 '%' => wt!(Percent),
                 '/' => wt!(ForwardSlash),
-                '='|'<'|'>'|'!' => result!(PunctuationStart),
+                '=' | '<' | '>' | '!' => result!(PunctuationStart),
                 '0'..='9' => result!(NumberStart),
                 '\'' => result!(CharStart),
                 '"' => result!(StringStart),
-                'a'..='z'|'A'..='Z'|'_' => result!(IdentifierOrKeyWordStart),
-                _ => if in_comment {
-                    self.location.line_offset_chars += 1
-                } else {
-                    result!(Err(ErrorKind::IllegalChar(c)));
-                },
+                'a'..='z' | 'A'..='Z' | '_' => result!(IdentifierOrKeyWordStart),
+                _ => {
+                    if in_comment {
+                        self.location.line_offset_chars += 1
+                    } else {
+                        result!(Err(ErrorKind::IllegalChar(c)));
+                    }
+                }
             }
         }
-        FindTokenStartResult { offset: self.text.len(), state: EndOfFile }
+        FindTokenStartResult {
+            offset: self.text.len(),
+            state: EndOfFile,
+        }
     }
     fn consume(&mut self, bytes: usize) {
         self.location.file_offset_bytes += bytes;
@@ -237,7 +253,10 @@ impl<'input> Matcher<'input> {
     }
     fn err(&mut self, kind: ErrorKind) -> <Self as Iterator>::Item {
         self.failed = true;
-        Err(Error {location: self.location, kind: kind })
+        Err(Error {
+            location: self.location,
+            kind: kind,
+        })
     }
     fn extract_punctuation(&mut self) -> <Self as Iterator>::Item {
         use self::Tok::*;
@@ -253,34 +272,33 @@ impl<'input> Matcher<'input> {
             }};
         }
         match chars.next() {
-            Some(char1) => {
-                match char1 {
-                    '=' => second_char!{Equal,
-                        '=' => DoubleEqual
-                    },
-                    '<' => second_char!{LessThan,
-                        '=' => LessThanOrEqual,
-                        '<' => LeftShift
-                    },
-                    '>' => second_char!(MoreThan,
-                        '=' => MoreThanOrEqual,
-                        '>' => RightShift
-                    ),
-                    '!' => {
-                        match chars.next() {
-                            Some('=') => self.token(NotEqual, 2),
-                            _ => self.err(ErrorKind::LonelyExclamation),
-                        }
-                    }
-                    _ => unreachable!(),
-                }
-            }
+            Some(char1) => match char1 {
+                '=' => second_char! {Equal,
+                    '=' => DoubleEqual
+                },
+                '<' => second_char! {LessThan,
+                    '=' => LessThanOrEqual,
+                    '<' => LeftShift
+                },
+                '>' => second_char!(MoreThan,
+                    '=' => MoreThanOrEqual,
+                    '>' => RightShift
+                ),
+                '!' => match chars.next() {
+                    Some('=') => self.token(NotEqual, 2),
+                    _ => self.err(ErrorKind::LonelyExclamation),
+                },
+                _ => unreachable!(),
+            },
             None => unreachable!(),
         }
     }
     fn extract_number(&mut self) -> <Self as Iterator>::Item {
         use std::str::FromStr;
-        let number_length = self.text.find(|c| {c < '0' || c > '9'}).unwrap_or(self.text.len());
+        let number_length = self
+            .text
+            .find(|c| c < '0' || c > '9')
+            .unwrap_or(self.text.len());
         let tok = Tok::Integer(i32::from_str(&self.text[..number_length]).unwrap());
         self.token(tok, number_length)
     }
@@ -294,7 +312,7 @@ impl<'input> Matcher<'input> {
             None => return self.err(ErrorKind::EofInCharLiteral),
         };
         match chars.next() {
-            Some('\'') => {},
+            Some('\'') => {}
             Some(_) => return self.err(ErrorKind::BadCharLiteral),
             None => return self.err(ErrorKind::EofInCharLiteral),
         }
@@ -311,7 +329,10 @@ impl<'input> Matcher<'input> {
         }
     }
     fn extract_identifier_or_keyword(&mut self) -> <Self as Iterator>::Item {
-        let len = self.text.find(|c| { !is_identifier_char(c) }).unwrap_or(self.text.len());
+        let len = self
+            .text
+            .find(|c| !is_identifier_char(c))
+            .unwrap_or(self.text.len());
         let tok = match &self.text[..len] {
             "function" => Tok::Function,
             "return" => Tok::Return,
@@ -353,19 +374,19 @@ impl<'input> Iterator for Matcher<'input> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::Tok::*;
     use super::ErrorKind::*;
+    use super::Tok::*;
+    use super::*;
 
     macro_rules! test_lex {
         ( $test_name:ident, $input:expr, $expected:expr ) => {
             #[test]
-             fn $test_name() {
+            fn $test_name() {
                 let matcher = Matcher::new("test", $input);
                 let output = matcher.collect::<Vec<_>>();
                 assert_eq!(output, $expected)
-             }
-        }
+            }
+        };
     }
 
     macro_rules! test_keywords {
@@ -389,80 +410,92 @@ mod tests {
         };
     }
 
-    fn tok(t: Tok, line: usize, start_line_offset: usize, start_file_offset: usize, bytes: usize)
-        -> <Matcher as Iterator>::Item {
-        Ok(
-            (Location::new("test", line, start_line_offset, start_file_offset),
-             t,
-             Location::new("test", line, start_line_offset + bytes, start_file_offset + bytes),
-            )
-        )
+    fn tok(
+        t: Tok,
+        line: usize,
+        start_line_offset: usize,
+        start_file_offset: usize,
+        bytes: usize,
+    ) -> <Matcher as Iterator>::Item {
+        Ok((
+            Location::new("test", line, start_line_offset, start_file_offset),
+            t,
+            Location::new(
+                "test",
+                line,
+                start_line_offset + bytes,
+                start_file_offset + bytes,
+            ),
+        ))
     }
 
-    fn err(kind: ErrorKind, line: usize, line_offset:usize, file_offset: usize) -> Error<'static> {
-        Error { location: Location::new("test", line, line_offset, file_offset), kind: kind}
+    fn err(kind: ErrorKind, line: usize, line_offset: usize, file_offset: usize) -> Error<'static> {
+        Error {
+            location: Location::new("test", line, line_offset, file_offset),
+            kind: kind,
+        }
     }
 
-    test_lex!{empty_string_ends_immediately, "", vec![]}
-    test_lex!{extract_a_simple_plus, "+", vec![
+    test_lex! {empty_string_ends_immediately, "", vec![]}
+    test_lex! {extract_a_simple_plus, "+", vec![
         tok(Plus, 1, 0, 0, 1),
     ]}
-    test_lex!{extract_two_pluses, "++", vec![
+    test_lex! {extract_two_pluses, "++", vec![
         tok(Plus, 1, 0, 0, 1),
         tok(Plus, 1, 1, 1, 1),
     ]}
-    test_lex!{extract_two_pluses_on_different_lines, "+\n+\n", vec![
+    test_lex! {extract_two_pluses_on_different_lines, "+\n+\n", vec![
         tok(Plus, 1, 0, 0, 1),
         tok(Plus, 2, 0, 2, 1),
     ]}
-    test_lex!{extract_equal, "=", vec![
+    test_lex! {extract_equal, "=", vec![
         tok(Equal, 1, 0, 0, 1),
     ]}
-    test_lex!{extract_double_equal, "==", vec![
+    test_lex! {extract_double_equal, "==", vec![
         tok(DoubleEqual, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_equal_when_followed_by_space, "= ", vec![
+    test_lex! {extract_equal_when_followed_by_space, "= ", vec![
         tok(Equal, 1, 0, 0, 1),
     ]}
-    test_lex!{extract_less_than, "<", vec![
+    test_lex! {extract_less_than, "<", vec![
         tok(LessThan, 1, 0, 0, 1),
     ]}
-    test_lex!{extract_less_than_or_equal, "<=", vec![
+    test_lex! {extract_less_than_or_equal, "<=", vec![
         tok(LessThanOrEqual, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_left_shift, "<<", vec![
+    test_lex! {extract_left_shift, "<<", vec![
         tok(LeftShift, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_more_than, ">", vec![
+    test_lex! {extract_more_than, ">", vec![
         tok(MoreThan, 1, 0, 0, 1),
     ]}
-    test_lex!{extract_more_than_or_equal, ">=", vec![
+    test_lex! {extract_more_than_or_equal, ">=", vec![
         tok(MoreThanOrEqual, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_right_shift, ">>", vec![
+    test_lex! {extract_right_shift, ">>", vec![
         tok(RightShift, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_not_equal, "!=", vec![
+    test_lex! {extract_not_equal, "!=", vec![
         tok(NotEqual, 1, 0, 0, 2),
     ]}
-    test_lex!{extract_integer, "123", vec![
+    test_lex! {extract_integer, "123", vec![
         tok(Integer(123), 1, 0, 0, 3),
     ]}
-    test_lex!{extract_integer_2, "923 - 03", vec![
+    test_lex! {extract_integer_2, "923 - 03", vec![
         tok(Integer(923), 1, 0, 0, 3),
         tok(Minus, 1, 4, 4, 1),
         tok(Integer(3), 1, 6, 6, 2),
     ]}
-    test_lex!{extract_char, "'s'", vec![
+    test_lex! {extract_char, "'s'", vec![
         tok(Char('s'), 1, 0, 0, 3),
     ]}
-    test_lex!{extract_str, r#""hello""#, vec![
+    test_lex! {extract_str, r#""hello""#, vec![
         tok(String("hello"), 1, 0, 0, 7),
     ]}
-    test_lex!{extract_identifier, "bob", vec![
+    test_lex! {extract_identifier, "bob", vec![
         tok(Identifier("bob"), 1, 0, 0, 3),
     ]}
-    test_keywords!{
+    test_keywords! {
         extract_function: "function" => Function,
         extract_return: "return" => Return,
         extract_let: "let" => Let,
@@ -472,7 +505,7 @@ mod tests {
         extract_not: "not" => Not,
         extract_or: "or" => Or
     }
-    test_lex!{ignore_comments, indoc!("
+    test_lex! {ignore_comments, indoc!("
             ident # A comment
             and
         "),
@@ -481,7 +514,7 @@ mod tests {
             tok(And, 2, 0, 18, 3),
         ]
     }
-    test_lex!{multiline_comment, indoc!("\
+    test_lex! {multiline_comment, indoc!("\
             {
             # 1
             # 2
@@ -493,15 +526,15 @@ mod tests {
             tok(RightBrace, 5, 0, 14, 1),
         ]
     }
-    test_lex!{comments_containing_otherwise_illegal_chars, indoc!("\
+    test_lex! {comments_containing_otherwise_illegal_chars, indoc!("\
             return # $:/`
             return
         "),
-        vec![
-            tok(Return, 1, 0, 0, 6),
-            tok(Return, 2, 0, 14, 6)
-        ]}
-    test_lex!{accept_char_return, indoc!("\
+    vec![
+        tok(Return, 1, 0, 0, 6),
+        tok(Return, 2, 0, 14, 6)
+    ]}
+    test_lex! {accept_char_return, indoc!("\
         if\r
         while\r
     "), vec![
@@ -513,18 +546,18 @@ mod tests {
     fn terminates_after_error() {
         let matcher = Matcher::new("test", "if $ {");
         let output = matcher.take(3).collect::<Vec<_>>();
-        assert_eq!(output, vec![
-            tok(If, 1, 0, 0, 2),
-            Err(err(IllegalChar('$'), 1, 3, 3)),
-        ])
+        assert_eq!(
+            output,
+            vec![tok(If, 1, 0, 0, 2), Err(err(IllegalChar('$'), 1, 3, 3)),]
+        )
     }
 
-    test_err!{return_illegal_char, "id$", err(IllegalChar('$'), 1, 2, 2)}
-    test_err!{return_lonely_exclamation, "if ! a", err(LonelyExclamation, 1, 3, 3)}
-    test_err!{return_eof_in_char_early, "if '", err(EofInCharLiteral, 1, 3, 3)}
-    test_err!{return_eof_in_char_late, "if 'a", err(EofInCharLiteral, 1, 3, 3)}
-    test_err!{return_bad_char_literal, "if 'as' {", err(BadCharLiteral, 1, 3, 3)}
-    test_err!{return_eof_in_string, r#"let a = "seffsd"#, err(EofInString, 1, 8, 8)}
-    test_err!{return_illegal_character_return, "if\r{", err(MisPlacedCharacterReturn, 1, 2, 2)}
+    test_err! {return_illegal_char, "id$", err(IllegalChar('$'), 1, 2, 2)}
+    test_err! {return_lonely_exclamation, "if ! a", err(LonelyExclamation, 1, 3, 3)}
+    test_err! {return_eof_in_char_early, "if '", err(EofInCharLiteral, 1, 3, 3)}
+    test_err! {return_eof_in_char_late, "if 'a", err(EofInCharLiteral, 1, 3, 3)}
+    test_err! {return_bad_char_literal, "if 'as' {", err(BadCharLiteral, 1, 3, 3)}
+    test_err! {return_eof_in_string, r#"let a = "seffsd"#, err(EofInString, 1, 8, 8)}
+    test_err! {return_illegal_character_return, "if\r{", err(MisPlacedCharacterReturn, 1, 2, 2)}
 
 }

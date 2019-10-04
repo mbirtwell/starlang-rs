@@ -1,7 +1,7 @@
-use std::io::{Read,Write};
 use super::base::*;
 use super::error::*;
 use super::statements::build_block;
+use std::io::{Read, Write};
 
 fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     for func in programme {
@@ -23,7 +23,10 @@ fn build_funcs<'a>(globals: &mut Globals, programme: &'a Vec<ast::Function>) -> 
     }
 }
 
-fn build_func<'a>(globals: &Globals, func: &'a ast::Function) -> BuildResult<'a, (Vec<Box<dyn Statement>>, usize)> {
+fn build_func<'a>(
+    globals: &Globals,
+    func: &'a ast::Function,
+) -> BuildResult<'a, (Vec<Box<dyn Statement>>, usize)> {
     let mut scope_stack = ScopeStack::new();
     for arg in &func.arguments {
         scope_stack.declare(arg);
@@ -33,14 +36,25 @@ fn build_func<'a>(globals: &Globals, func: &'a ast::Function) -> BuildResult<'a,
 }
 
 fn convert_args_to_values(args: Vec<String>) -> Value {
-    Value::from(args.iter().map(|arg| {
-        Value::from(arg.chars().map(|char| {
-            Value::Integer(char as i32)
-        }).collect::<Vec<_>>())
-    }).collect::<Vec<_>>())
+    Value::from(
+        args.iter()
+            .map(|arg| {
+                Value::from(
+                    arg.chars()
+                        .map(|char| Value::Integer(char as i32))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
 }
 
-pub fn exec<'a>(programme: &'a Vec<ast::Function>, args: Vec<String>, input: &mut dyn Read, output: &mut dyn Write) -> ExecResult<'a, i32> {
+pub fn exec<'a>(
+    programme: &'a Vec<ast::Function>,
+    args: Vec<String>,
+    input: &mut dyn Read,
+    output: &mut dyn Write,
+) -> ExecResult<'a, i32> {
     let mut globals = Globals::new(input, output);
     collect_funcs(&mut globals, programme);
     if !globals.has_main() {
@@ -51,8 +65,7 @@ pub fn exec<'a>(programme: &'a Vec<ast::Function>, args: Vec<String>, input: &mu
         let main_func = globals.get_main();
         match main_func.call(&globals, vec![convert_args_to_values(args)]) {
             Value::Integer(status_code) => Ok(status_code),
-            Value::Array(_) => panic!("Array returned from main. Requires int.")
+            Value::Array(_) => panic!("Array returned from main. Requires int."),
         }
     }
 }
-

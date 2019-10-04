@@ -1,6 +1,6 @@
 use super::base::*;
 use super::error::BuildResult;
-use super::expressions::{build_expr, build_lexpr, Identifier, evaluate_to_bool};
+use super::expressions::{build_expr, build_lexpr, evaluate_to_bool, Identifier};
 
 struct Return {
     expr: Box<dyn Expr>,
@@ -67,15 +67,19 @@ impl Statement for WhileStatement {
     }
 }
 
-pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &'a Vec<ast::Statement>) -> BuildResult<'a, Vec<Box<dyn Statement>>> {
+pub fn build_block<'a>(
+    globals: &Globals,
+    scope_stack: &mut ScopeStack,
+    stmts: &'a Vec<ast::Statement>,
+) -> BuildResult<'a, Vec<Box<dyn Statement>>> {
     let mut rv: Vec<Box<dyn Statement>> = Vec::with_capacity(stmts.len());
     let mut failures = Vec::new();
-    macro_rules! expr{
+    macro_rules! expr {
         ( $expr:expr ) => {{
             let (expr, inner_failures) = build_expr(globals, scope_stack, $expr);
             failures.extend(inner_failures);
             expr
-        }}
+        }};
     }
     macro_rules! stmt {
         ( $stmt:expr ) => {
@@ -91,16 +95,14 @@ pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &
     }
     for stmt in stmts {
         match *stmt {
-            ast::Statement::Return(ref expr) => {
-                stmt!(Return {expr: expr!(expr)})
-            },
+            ast::Statement::Return(ref expr) => stmt!(Return { expr: expr!(expr) }),
             ast::Statement::Declare(ref name, ref expr) => {
                 let var_id = scope_stack.declare(name);
                 stmt!(Assign {
                     lexpr: Box::new(Identifier::new(var_id)),
                     rexpr: expr!(expr),
                 })
-            },
+            }
             ast::Statement::Assign(ref lexpr, ref rexpr) => {
                 let (lexpr, inner_failures) = build_lexpr(globals, scope_stack, lexpr);
                 failures.extend(inner_failures);
@@ -108,17 +110,17 @@ pub fn build_block<'a>(globals: &Globals, scope_stack: &mut ScopeStack, stmts: &
                     lexpr: lexpr,
                     rexpr: expr!(rexpr),
                 })
-            },
-            ast::Statement::Expr(ref expr) => {
-                stmt!(ExprStatement {expr: expr!(expr)})
             }
-            ast::Statement::If(ref expr, ref stmts) => {
-                stmt!(IfStatement {expr: expr!(expr), stmts: block!(stmts)})
-            }
-            ast::Statement::While(ref expr, ref stmts) => {
-                stmt!(WhileStatement {expr: expr!(expr), stmts: block!(stmts)})
-            }
+            ast::Statement::Expr(ref expr) => stmt!(ExprStatement { expr: expr!(expr) }),
+            ast::Statement::If(ref expr, ref stmts) => stmt!(IfStatement {
+                expr: expr!(expr),
+                stmts: block!(stmts)
+            }),
+            ast::Statement::While(ref expr, ref stmts) => stmt!(WhileStatement {
+                expr: expr!(expr),
+                stmts: block!(stmts)
+            }),
         }
-    };
+    }
     (rv, failures)
 }

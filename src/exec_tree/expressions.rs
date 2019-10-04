@@ -2,7 +2,10 @@ use super::base::*;
 use super::error::*;
 
 fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<dyn Expr>]) -> Vec<Value> {
-    exprs.iter().map(|ref expr| expr.evaluate(globals, locals)).collect()
+    exprs
+        .iter()
+        .map(|ref expr| expr.evaluate(globals, locals))
+        .collect()
 }
 
 fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> i32 {
@@ -25,7 +28,7 @@ macro_rules! evaluate_to_array {
             Value::Integer(_) => panic!("Required array got int"),
             Value::Array(ref $ident) => $block,
         }
-    }
+    };
 }
 
 struct BadExpr {}
@@ -52,12 +55,17 @@ struct StringLiteral {
 
 impl Expr for StringLiteral {
     fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
-        Value::from(self.s.chars().map(|c| {Value::Integer(c as i32)}).collect::<Vec<_>>())
+        Value::from(
+            self.s
+                .chars()
+                .map(|c| Value::Integer(c as i32))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
 struct ArrayLiteral {
-    value_exprs: Vec<Box<dyn Expr>>
+    value_exprs: Vec<Box<dyn Expr>>,
 }
 
 impl Expr for ArrayLiteral {
@@ -72,7 +80,7 @@ pub struct Identifier {
 
 impl Identifier {
     pub fn new(var_id: usize) -> Self {
-        Identifier {var_id: var_id}
+        Identifier { var_id: var_id }
     }
 }
 
@@ -88,7 +96,7 @@ impl Expr for Identifier {
     }
 }
 
-struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32>  {
+struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32> {
     lhs_expr: Box<dyn Expr>,
     rhs_expr: Box<dyn Expr>,
     func: FnT,
@@ -96,7 +104,11 @@ struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32>  {
 
 impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
     fn new<'a>(lhs_expr: Box<dyn Expr>, rhs_expr: Box<dyn Expr>, func: FnT) -> Self {
-        BinaryIntegerOp {lhs_expr: lhs_expr, rhs_expr: rhs_expr, func: func}
+        BinaryIntegerOp {
+            lhs_expr: lhs_expr,
+            rhs_expr: rhs_expr,
+            func: func,
+        }
     }
 }
 
@@ -128,9 +140,8 @@ impl<FnT: Fn(bool) -> bool> BinaryBoolOp<FnT> {
 
 impl<FnT: Fn(bool) -> bool> Expr for BinaryBoolOp<FnT> {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer(if self.helper(globals, locals) {1} else {0})
+        Value::Integer(if self.helper(globals, locals) { 1 } else { 0 })
     }
-
 }
 
 struct Call {
@@ -141,7 +152,8 @@ struct Call {
 impl Expr for Call {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
         globals.lookup_func(self.func).call(
-            globals, evaluate_expr_list(globals, locals, &self.argument_exprs),
+            globals,
+            evaluate_expr_list(globals, locals, &self.argument_exprs),
         )
     }
 }
@@ -177,7 +189,11 @@ struct BoolNot {
 
 impl Expr for BoolNot {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer(if evaluate_to_bool(globals, locals, &*self.expr) {0} else {1})
+        Value::Integer(if evaluate_to_bool(globals, locals, &*self.expr) {
+            0
+        } else {
+            1
+        })
     }
 }
 
@@ -192,7 +208,11 @@ impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
     }
 }
 
-fn build_expr_list<'a>(globals: &Globals, scope_stack: &ScopeStack, exprs: &'a [ast::Expr]) -> BuildResult<'a, Vec<Box<dyn Expr>>> {
+fn build_expr_list<'a>(
+    globals: &Globals,
+    scope_stack: &ScopeStack,
+    exprs: &'a [ast::Expr],
+) -> BuildResult<'a, Vec<Box<dyn Expr>>> {
     let mut rv = Vec::new();
     let mut failures = StaticAnalysisErrors::new();
     for expr in exprs {
@@ -203,9 +223,13 @@ fn build_expr_list<'a>(globals: &Globals, scope_stack: &ScopeStack, exprs: &'a [
     (rv, failures)
 }
 
-pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<dyn Expr>> {
-    use ast::ExprKind::*;
+pub fn build_expr<'a>(
+    globals: &Globals,
+    scope_stack: &ScopeStack,
+    expr: &'a ast::Expr,
+) -> BuildResult<'a, Box<dyn Expr>> {
     use ast::BinaryOpCode::*;
+    use ast::ExprKind::*;
     let mut failures = StaticAnalysisErrors::new();
     macro_rules! result {
         ( $expr:expr ) => {
@@ -218,23 +242,23 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
             result!(BadExpr {})
         }};
     }
-    macro_rules! expr{
+    macro_rules! expr {
         ( $expr:expr ) => {{
             let (ex, inner_failures) = build_expr(globals, scope_stack, $expr);
             failures.extend(inner_failures);
             ex
-        }}
+        }};
     }
-    macro_rules! expr_list{
+    macro_rules! expr_list {
         ( $expr:expr ) => {{
             let (rv, inner_failures) = build_expr_list(globals, scope_stack, $expr);
             failures.extend(inner_failures);
             rv
-        }}
+        }};
     }
     match expr.kind {
         Number(n) => result!(IntegerLiteral { value: n }),
-        Char(c) => result!(IntegerLiteral {value: c as i32}),
+        Char(c) => result!(IntegerLiteral { value: c as i32 }),
         String(ref s) => result!(StringLiteral { s: s.to_string() }),
         Identifier(ref name) => result!(self::Identifier::new(scope_stack.get(name))),
         BinaryOp(ref l, op, ref r) => {
@@ -252,7 +276,11 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
             }
             macro_rules! bool_op {
                 ( $op:expr ) => {
-                    result!(BinaryBoolOp {lhs_expr: lhs, rhs_expr: rhs, should_return: $op})
+                    result!(BinaryBoolOp {
+                        lhs_expr: lhs,
+                        rhs_expr: rhs,
+                        should_return: $op
+                    })
                 };
             }
             match op {
@@ -272,10 +300,10 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
                 MoreThanOrEqual => cmp_op!(>=),
                 Equal => cmp_op!(==),
                 NotEqual => cmp_op!(!=),
-                BoolOr => bool_op!(|v| {v}),
-                BoolAnd => bool_op!(|v| {! v}),
+                BoolOr => bool_op!(|v| { v }),
+                BoolAnd => bool_op!(|v| { !v }),
             }
-        },
+        }
         Call(ref fname, ref argument_exprs) => {
             let argument_exprs = expr_list!(argument_exprs);
             if let Some(func) = globals.reference_func(fname) {
@@ -285,23 +313,17 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
                 })
             } else {
                 failure!(StaticAnalysisError::CallUnknownFunction(
-                    fname,
-                    expr.start,
-                    expr.end,
+                    fname, expr.start, expr.end,
                 ))
             }
-        },
-        Array(ref value_exprs) => {
-            result!(ArrayLiteral {
-                value_exprs: expr_list!(value_exprs)
-            })
-        },
-        Subscription(ref array_expr, ref index_expr) => {
-            result!(self::Subscription {
-                array_expr: expr!(array_expr),
-                index_expr: expr!(index_expr),
-            })
-        },
+        }
+        Array(ref value_exprs) => result!(ArrayLiteral {
+            value_exprs: expr_list!(value_exprs)
+        }),
+        Subscription(ref array_expr, ref index_expr) => result!(self::Subscription {
+            array_expr: expr!(array_expr),
+            index_expr: expr!(index_expr),
+        }),
         UnaryOp(op, ref ast_expr) => {
             use ast::UnaryOpCode::*;
             let expr = expr!(ast_expr);
@@ -311,17 +333,21 @@ pub fn build_expr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast
                 }
             }
             match op {
-                BoolNot => result!(self::BoolNot {expr:expr}),
+                BoolNot => result!(self::BoolNot { expr: expr }),
                 BitNot => int_op!(!),
                 Neg => int_op!(-),
                 Plus => unimplemented!(),
             }
-        },
+        }
         Error => panic!("This really ought not have got this far"),
     }
 }
 
-pub fn build_lexpr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a ast::Expr) -> BuildResult<'a, Box<dyn LExpr>> {
+pub fn build_lexpr<'a>(
+    globals: &Globals,
+    scope_stack: &ScopeStack,
+    expr: &'a ast::Expr,
+) -> BuildResult<'a, Box<dyn LExpr>> {
     use ast::ExprKind::*;
     let mut failures = StaticAnalysisErrors::new();
     macro_rules! result {
@@ -329,21 +355,19 @@ pub fn build_lexpr<'a>(globals: &Globals, scope_stack: &ScopeStack, expr: &'a as
             (Box::new($expr), failures)
         };
     }
-    macro_rules! expr{
+    macro_rules! expr {
         ( $expr:expr ) => {{
             let (ex, inner_failures) = build_expr(globals, scope_stack, $expr);
             failures.extend(inner_failures);
             ex
-        }}
+        }};
     }
     match expr.kind {
         Identifier(ref name) => result!(self::Identifier::new(scope_stack.get(name))),
-        Subscription(ref array_expr, ref index_expr) => {
-            result!(self::Subscription {
-                array_expr: expr!(array_expr),
-                index_expr: expr!(index_expr),
-            })
-        }
-        _ => panic!{"Not implemented or invalid l-expr for {:?} yet", expr}
+        Subscription(ref array_expr, ref index_expr) => result!(self::Subscription {
+            array_expr: expr!(array_expr),
+            index_expr: expr!(index_expr),
+        }),
+        _ => panic! {"Not implemented or invalid l-expr for {:?} yet", expr},
     }
 }

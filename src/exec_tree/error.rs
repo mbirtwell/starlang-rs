@@ -1,5 +1,5 @@
-use std;
 use super::super::lexer::Location;
+use std;
 
 #[derive(Debug, PartialEq)]
 pub enum ExecError<'a> {
