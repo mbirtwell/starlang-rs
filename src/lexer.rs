@@ -104,10 +104,10 @@ impl<'input> Location<'input> {
         file_offset_bytes: usize,
     ) -> Location {
         Location {
-            file_name: file_name,
-            line: line,
-            line_offset_chars: line_offset_chars,
-            file_offset_bytes: file_offset_bytes,
+            file_name,
+            line,
+            line_offset_chars,
+            file_offset_bytes,
         }
     }
     fn new_line(&mut self) {
@@ -154,7 +154,7 @@ pub struct Matcher<'input> {
 impl<'input> Matcher<'input> {
     pub fn new(file_name: &'input str, text: &'input str) -> Matcher<'input> {
         Matcher {
-            text: text,
+            text,
             location: Location::new(file_name, 1, 0, 0),
             failed: false,
         }
@@ -255,7 +255,7 @@ impl<'input> Matcher<'input> {
         self.failed = true;
         Err(Error {
             location: self.location,
-            kind: kind,
+            kind,
         })
     }
     fn extract_punctuation(&mut self) -> <Self as Iterator>::Item {
@@ -432,7 +432,7 @@ mod tests {
     fn err(kind: ErrorKind, line: usize, line_offset: usize, file_offset: usize) -> Error<'static> {
         Error {
             location: Location::new("test", line, line_offset, file_offset),
-            kind: kind,
+            kind,
         }
     }
 

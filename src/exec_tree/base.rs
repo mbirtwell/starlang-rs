@@ -113,7 +113,7 @@ impl<'b> Globals<'b> {
     pub fn declare_func(&mut self, func: &ast::Function) {
         let id = self.next_func_id();
         self.function_declarations
-            .insert(func.name.clone(), FunctionDeclaration { id: id });
+            .insert(func.name.clone(), FunctionDeclaration { id });
     }
     pub fn has_main(&self) -> bool {
         self.function_declarations.contains_key("main")
@@ -130,10 +130,8 @@ impl<'b> Globals<'b> {
                         name
                     )
                 }
-                self.functions.push(Box::new(StarLangFunction {
-                    stmts: stmts,
-                    max_locals: max_locals,
-                }))
+                self.functions
+                    .push(Box::new(StarLangFunction { stmts, max_locals }))
             }
             None => unreachable!("Attempting to define undeclared function {}", name),
         }
@@ -156,15 +154,14 @@ impl<'b> Globals<'b> {
     ) {
         let id = self.next_func_id();
         self.function_declarations
-            .insert(name.to_string(), FunctionDeclaration { id: id });
+            .insert(name.to_string(), FunctionDeclaration { id });
         if self.functions.len() != id.idx {
             panic!(
                 "Attempting to define function {} out of declaration order.",
                 name
             )
         }
-        self.functions
-            .push(Box::new(PlatformFunction { func: func }))
+        self.functions.push(Box::new(PlatformFunction { func }))
     }
 }
 

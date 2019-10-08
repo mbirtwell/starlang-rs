@@ -12,8 +12,8 @@ impl<'a> Function<'a> {
     pub fn new(name: &str, arguments: Vec<&'a str>, stmts: Vec<Statement<'a>>) -> Function<'a> {
         return Function {
             name: name.into(),
-            arguments: arguments,
-            stmts: stmts,
+            arguments,
+            stmts,
         };
     }
 }

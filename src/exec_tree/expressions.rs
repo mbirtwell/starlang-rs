@@ -80,7 +80,7 @@ pub struct Identifier {
 
 impl Identifier {
     pub fn new(var_id: usize) -> Self {
-        Identifier { var_id: var_id }
+        Identifier { var_id }
     }
 }
 
@@ -105,9 +105,9 @@ struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32> {
 impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
     fn new<'a>(lhs_expr: Box<dyn Expr>, rhs_expr: Box<dyn Expr>, func: FnT) -> Self {
         BinaryIntegerOp {
-            lhs_expr: lhs_expr,
-            rhs_expr: rhs_expr,
-            func: func,
+            lhs_expr,
+            rhs_expr,
+            func,
         }
     }
 }
