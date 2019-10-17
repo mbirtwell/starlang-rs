@@ -66,7 +66,7 @@ fn main() {
 }
 
 fn run(stdlib_path: String, script_path: String, args: Vec<String>) -> OuterResult<i32> {
-    ansi_term::enable_ansi_support().map_err(|e| OuterError::FailedInitAnsiTerm(e))?;
+    let _ = ansi_term::enable_ansi_support(); //.map_err(|e| OuterError::FailedInitAnsiTerm(e))?;
     let mut files = FileData::new();
     let stdlib_handle = files.read(stdlib_path)?;
     let script_handle = files.read(script_path)?;

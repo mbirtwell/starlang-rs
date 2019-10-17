@@ -13,6 +13,7 @@ pub enum OuterError {
     ParseError,
     StaticAnalysisFailed,
     OutputError,
+    #[allow(dead_code)]
     FailedInitAnsiTerm(u64),
 }
 pub type OuterResult<T> = std::result::Result<T, OuterError>;
