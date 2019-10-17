@@ -29,8 +29,8 @@ pub enum Statement<'a> {
 
 pub struct Expr<'a> {
     pub kind: ExprKind<'a>,
-    pub start: Location<'a>,
-    pub end: Location<'a>,
+    pub start: Location,
+    pub end: Location,
 }
 
 pub enum ExprKind<'a> {
@@ -48,7 +48,7 @@ pub enum ExprKind<'a> {
 
 macro_rules! cons {
     ( $name:ident ( $( $arg:ident: $typ:ty ), * ) => $kind:ident ) => {
-        pub fn $name(start: Location<'a>, $( $arg: $typ , )* end: Location<'a>) -> Self {
+        pub fn $name(start: Location, $( $arg: $typ , )* end: Location) -> Self {
             Self {
                 kind: ExprKind::$kind($( $arg.into(), )*),
                 start: start,

@@ -1,3 +1,4 @@
+use file_data::FileHandle;
 use std::fmt;
 
 #[derive(PartialEq, Debug)]
@@ -47,8 +48,8 @@ pub enum Tok<'input> {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct Error<'input> {
-    pub location: Location<'input>,
+pub struct Error {
+    pub location: Location,
     pub kind: ErrorKind,
 }
 
@@ -88,23 +89,23 @@ impl fmt::Display for ErrorKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub struct Location<'input> {
-    pub file_name: &'input str,
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Location {
+    pub file: Option<FileHandle>,
     pub line: usize,
     pub line_offset_chars: usize,
     pub file_offset_bytes: usize,
 }
 
-impl<'input> Location<'input> {
+impl Location {
     pub fn new(
-        file_name: &'input str,
+        file: FileHandle,
         line: usize,
         line_offset_chars: usize,
         file_offset_bytes: usize,
     ) -> Location {
         Location {
-            file_name,
+            file: Some(file),
             line,
             line_offset_chars,
             file_offset_bytes,
@@ -116,11 +117,11 @@ impl<'input> Location<'input> {
     }
 }
 
-impl<'input> Default for Location<'input> {
-    fn default() -> Location<'input> {
-        Location::new("unknown", 0, 0, 0)
-    }
-}
+//impl Default for Location {
+//    fn default() -> Location {
+//        Location::new(None, 0, 0, 0)
+//    }
+//}
 
 fn is_identifier_char(c: char) -> bool {
     match c {
@@ -147,15 +148,15 @@ enum FindTokenStartState<'input> {
 
 pub struct Matcher<'input> {
     text: &'input str,
-    location: Location<'input>,
+    location: Location,
     failed: bool,
 }
 
 impl<'input> Matcher<'input> {
-    pub fn new(file_name: &'input str, text: &'input str) -> Matcher<'input> {
+    pub fn new(file: FileHandle, text: &'input str) -> Matcher<'input> {
         Matcher {
             text,
-            location: Location::new(file_name, 1, 0, 0),
+            location: Location::new(file, 1, 0, 0),
             failed: false,
         }
     }
@@ -349,7 +350,7 @@ impl<'input> Matcher<'input> {
 }
 
 impl<'input> Iterator for Matcher<'input> {
-    type Item = Result<(Location<'input>, Tok<'input>, Location<'input>), Error<'input>>;
+    type Item = Result<(Location, Tok<'input>, Location), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use self::FindTokenStartState::*;
@@ -377,6 +378,7 @@ mod tests {
     use super::ErrorKind::*;
     use super::Tok::*;
     use super::*;
+    use file_data::FileData;
 
     macro_rules! test_lex {
         ( $test_name:ident, $input:expr, $expected:expr ) => {
@@ -418,10 +420,15 @@ mod tests {
         bytes: usize,
     ) -> <Matcher as Iterator>::Item {
         Ok((
-            Location::new("test", line, start_line_offset, start_file_offset),
+            Location::new(
+                FileHandle::dummy(),
+                line,
+                start_line_offset,
+                start_file_offset,
+            ),
             t,
             Location::new(
-                "test",
+                FileHandle::dummy(),
                 line,
                 start_line_offset + bytes,
                 start_file_offset + bytes,
@@ -429,9 +436,9 @@ mod tests {
         ))
     }
 
-    fn err(kind: ErrorKind, line: usize, line_offset: usize, file_offset: usize) -> Error<'static> {
+    fn err(kind: ErrorKind, line: usize, line_offset: usize, file_offset: usize) -> Error {
         Error {
-            location: Location::new("test", line, line_offset, file_offset),
+            location: Location::new(FileHandle::dummy(), line, line_offset, file_offset),
             kind,
         }
     }
@@ -544,7 +551,7 @@ mod tests {
 
     #[test]
     fn terminates_after_error() {
-        let matcher = Matcher::new("test", "if $ {");
+        let matcher = Matcher::new(FileHandle::dummy(), "if $ {");
         let output = matcher.take(3).collect::<Vec<_>>();
         assert_eq!(
             output,

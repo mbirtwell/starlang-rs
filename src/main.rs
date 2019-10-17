@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::process::exit;
 
 extern crate ansi_term;
@@ -21,11 +19,12 @@ mod lexer;
 use lexer::Matcher;
 mod error;
 use error::*;
+use file_data::{FileData, FileHandle};
+
+mod file_data;
 
 #[cfg(test)]
 mod test_grammar;
-
-type FileContents<'input> = HashMap<&'input str, &'input str>;
 
 fn main() {
     let mut stdlib_path = "stdlib.sl".to_string();
@@ -50,7 +49,7 @@ fn main() {
         parser.parse_args_or_exit()
     }
     args.insert(0, script_path.clone());
-    let exit_status = match run(&stdlib_path, &script_path, args) {
+    let exit_status = match run(stdlib_path, script_path, args) {
         Ok(n) => n,
         Err(OuterError::FailedInitAnsiTerm(err_code)) => {
             writeln!(
@@ -66,23 +65,14 @@ fn main() {
     exit(exit_status);
 }
 
-fn run<'filename>(
-    stdlib_path: &'filename str,
-    script_path: &'filename str,
-    args: Vec<String>,
-) -> OuterResult<i32> {
+fn run(stdlib_path: String, script_path: String, args: Vec<String>) -> OuterResult<i32> {
     ansi_term::enable_ansi_support().map_err(|e| OuterError::FailedInitAnsiTerm(e))?;
-    let stdlib_contents = read_file(stdlib_path)?;
-    let script_contents = read_file(script_path)?;
+    let mut files = FileData::new();
+    let stdlib_handle = files.read(stdlib_path)?;
+    let script_handle = files.read(script_path)?;
     {
-        let contents = {
-            let mut contents: FileContents = HashMap::new();
-            contents.insert(stdlib_path, &stdlib_contents);
-            contents.insert(script_path, &script_contents);
-            contents
-        };
-        let mut programme = parse_file(stdlib_path, &stdlib_contents, &contents)?;
-        programme.extend(parse_file(script_path, &script_contents, &contents)?);
+        let mut programme = parse_file(stdlib_handle, &files)?;
+        programme.extend(parse_file(script_handle, &files)?);
         let stdin = io::stdin();
         let stdout = io::stdout();
         {
@@ -91,7 +81,7 @@ fn run<'filename>(
             match exec_tree::exec(&programme, args, &mut stdin_lock, &mut stdout_lock) {
                 Err(err) => {
                     let stderr = io::stderr();
-                    write_exec_error(&mut stderr.lock(), &err, &contents)?;
+                    write_exec_error(&mut stderr.lock(), &err, &files)?;
                     Err(err.into())
                 }
                 Ok(i) => Ok(i),
@@ -100,40 +90,13 @@ fn run<'filename>(
     }
 }
 
-fn read_file_inner(path: &str) -> io::Result<String> {
-    let mut file = fs::OpenOptions::new().read(true).open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    Ok(contents)
-}
-
-fn read_file(path: &str) -> OuterResult<String> {
-    match read_file_inner(path) {
-        Ok(rv) => Ok(rv),
-        Err(err) => {
-            writeln!(
-                io::stderr(),
-                "error: Failed to read file '{}': {}",
-                path,
-                err
-            )
-            .unwrap();
-            Err(OuterError::ReadInput)
-        }
-    }
-}
-
-fn parse_file<'a>(
-    path: &'a str,
-    contents: &'a str,
-    all_contents: &'a FileContents,
-) -> OuterResult<Vec<ast::Function<'a>>> {
-    let lexer = Matcher::new(path, &contents);
+fn parse_file(file: FileHandle, files: &FileData) -> OuterResult<Vec<ast::Function<'_>>> {
+    let lexer = Matcher::new(file, files.get_contents(file));
     match grammar::parse_Programme(lexer) {
         Ok(rv) => Ok(rv),
         Err(err) => {
             let stderr = io::stderr();
-            write_parse_error(&mut stderr.lock(), err, all_contents)?;
+            write_parse_error(&mut stderr.lock(), err, files)?;
             Err(OuterError::ParseError)
         }
     }

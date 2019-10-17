@@ -5,7 +5,7 @@ use lexer::{self, Location, Tok};
 use std;
 use std::io::{self, Write};
 
-use super::FileContents;
+use file_data::FileData;
 
 #[derive(Debug)]
 pub enum OuterError {
@@ -16,8 +16,7 @@ pub enum OuterError {
     FailedInitAnsiTerm(u64),
 }
 pub type OuterResult<T> = std::result::Result<T, OuterError>;
-pub type ParseError<'input> =
-    lalrpop_util::ParseError<Location<'input>, Tok<'input>, lexer::Error<'input>>;
+pub type ParseError<'input> = lalrpop_util::ParseError<Location, Tok<'input>, lexer::Error>;
 
 impl<'a> From<ExecError<'a>> for OuterError {
     fn from(value: ExecError<'a>) -> OuterError {
@@ -39,7 +38,7 @@ macro_rules! error {
 pub fn write_parse_error(
     f: &mut dyn Write,
     err: ParseError,
-    contents: &FileContents,
+    contents: &FileData,
 ) -> OuterResult<()> {
     write_parse_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
 }
@@ -47,7 +46,7 @@ pub fn write_parse_error(
 fn write_parse_error_inner(
     f: &mut dyn Write,
     err: ParseError,
-    contents: &FileContents,
+    contents: &FileData,
 ) -> io::Result<()> {
     use lalrpop_util::ParseError::*;
     match err {
@@ -95,7 +94,7 @@ fn write_parse_error_inner(
 pub fn write_exec_error<'a>(
     f: &mut dyn Write,
     err: &'a ExecError,
-    contents: &'a FileContents,
+    contents: &FileData,
 ) -> OuterResult<()> {
     write_exec_error_inner(f, err, contents).map_err(|_| OuterError::OutputError)
 }
@@ -103,7 +102,7 @@ pub fn write_exec_error<'a>(
 fn write_exec_error_inner<'a>(
     f: &mut dyn Write,
     err: &'a ExecError,
-    contents: &'a FileContents,
+    contents: &FileData,
 ) -> io::Result<()> {
     match *err {
         ExecError::StaticAnalysisFailed(ref errs) => {
@@ -119,7 +118,7 @@ fn write_exec_error_inner<'a>(
 fn write_static_analysis_err<'a>(
     f: &mut dyn Write,
     err: &'a StaticAnalysisError,
-    contents: &'a FileContents,
+    contents: &FileData,
 ) -> io::Result<()> {
     match *err {
         StaticAnalysisError::CallUnknownFunction(fname, start, end) => {
@@ -130,13 +129,10 @@ fn write_static_analysis_err<'a>(
     Ok(())
 }
 
-fn write_location(
-    f: &mut dyn Write,
-    location: &Location,
-    contents: &FileContents,
-) -> io::Result<()> {
-    write_location_at(f, location)?;
-    if let Some(file_content) = contents.get(location.file_name) {
+fn write_location(f: &mut dyn Write, location: &Location, contents: &FileData) -> io::Result<()> {
+    write_location_at(f, location, contents)?;
+    if let Some(file) = location.file {
+        let file_content = contents.get_contents(file);
         let line_start = find_line_start(location, file_content);
         write_previous_line(f, location, line_start, file_content)?;
         let line_end = find_line_end(location, file_content);
@@ -150,10 +146,11 @@ fn write_locations(
     f: &mut dyn Write,
     start: &Location,
     end: &Location,
-    contents: &FileContents,
+    contents: &FileData,
 ) -> io::Result<()> {
-    write_location_at(f, start)?;
-    if let Some(file_content) = contents.get(start.file_name) {
+    write_location_at(f, start, contents)?;
+    if let Some(file) = start.file {
+        let file_content = contents.get_contents(file);
         let line_start = find_line_start(start, file_content);
         write_previous_line(f, start, line_start, file_content)?;
         let end_line_end = find_line_end(end, file_content);
@@ -200,8 +197,16 @@ fn write_locations(
     Ok(())
 }
 
-fn write_location_at(f: &mut dyn Write, location: &Location) -> io::Result<()> {
-    writeln!(f, "At: {}:{}", location.file_name, location.line)
+fn write_location_at(f: &mut dyn Write, location: &Location, files: &FileData) -> io::Result<()> {
+    writeln!(
+        f,
+        "At: {}:{}",
+        location
+            .file
+            .map(|f| files.get_name(f))
+            .unwrap_or("unknown"),
+        location.line
+    )
 }
 
 fn find_line_start(location: &Location, file_content: &str) -> usize {
