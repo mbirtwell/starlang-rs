@@ -3,47 +3,47 @@ use super::error::BuildResult;
 use super::expressions::{build_expr, build_lexpr, evaluate_to_bool, Identifier};
 
 struct Return {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
 }
 
 impl Statement for Return {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        FunctionState::Return(self.expr.evaluate(globals, locals))
+        FunctionState::Return(self.expr.expr.evaluate(globals, locals))
     }
 }
 
 struct Assign {
     lexpr: Box<dyn LExpr>,
-    rexpr: Box<dyn Expr>,
+    rexpr: ExprBox,
 }
 
 impl Statement for Assign {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        let value = self.rexpr.evaluate(globals, locals);
+        let value = self.rexpr.expr.evaluate(globals, locals);
         self.lexpr.assign(globals, locals, value);
         FunctionState::NoReturn
     }
 }
 
 struct ExprStatement {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
 }
 
 impl Statement for ExprStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        self.expr.evaluate(globals, locals);
+        self.expr.expr.evaluate(globals, locals);
         FunctionState::NoReturn
     }
 }
 
 struct IfStatement {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
     stmts: Vec<Box<dyn Statement>>,
 }
 
 impl Statement for IfStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        if evaluate_to_bool(globals, locals, &*self.expr) {
+        if evaluate_to_bool(globals, locals, &self.expr) {
             exec_block(globals, locals, &self.stmts)
         } else {
             FunctionState::NoReturn
@@ -52,13 +52,13 @@ impl Statement for IfStatement {
 }
 
 struct WhileStatement {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
     stmts: Vec<Box<dyn Statement>>,
 }
 
 impl Statement for WhileStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        while evaluate_to_bool(globals, locals, &*self.expr) {
+        while evaluate_to_bool(globals, locals, &self.expr) {
             if let FunctionState::Return(v) = exec_block(globals, locals, &self.stmts) {
                 return FunctionState::Return(v);
             }

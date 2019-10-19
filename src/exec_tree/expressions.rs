@@ -1,22 +1,22 @@
 use super::base::*;
 use super::error::*;
 
-fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[Box<dyn Expr>]) -> Vec<Value> {
+fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[ExprBox]) -> Vec<Value> {
     exprs
         .iter()
-        .map(|ref expr| expr.evaluate(globals, locals))
+        .map(|ref expr| expr.expr.evaluate(globals, locals))
         .collect()
 }
 
-fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> i32 {
-    match expr.evaluate(globals, locals) {
+fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &ExprBox) -> i32 {
+    match expr.expr.evaluate(globals, locals) {
         Value::Integer(n) => n,
         Value::Array(_) => panic!("Required int got array"),
     }
 }
 
-pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> bool {
-    match expr.evaluate(globals, locals) {
+pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &ExprBox) -> bool {
+    match expr.expr.evaluate(globals, locals) {
         Value::Integer(n) => n != 0,
         Value::Array(_) => unimplemented!(),
     }
@@ -24,7 +24,7 @@ pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &dyn Expr) -> 
 
 macro_rules! evaluate_to_array {
     ($globals:expr, $locals:expr, $expr:expr, $ident:ident => $block:block) => {
-        match $expr.evaluate($globals, $locals) {
+        match $expr.expr.evaluate($globals, $locals) {
             Value::Integer(_) => panic!("Required array got int"),
             Value::Array(ref $ident) => $block,
         }
@@ -65,7 +65,7 @@ impl Expr for StringLiteral {
 }
 
 struct ArrayLiteral {
-    value_exprs: Vec<Box<dyn Expr>>,
+    value_exprs: Vec<ExprBox>,
 }
 
 impl Expr for ArrayLiteral {
@@ -97,13 +97,13 @@ impl Expr for Identifier {
 }
 
 struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32> {
-    lhs_expr: Box<dyn Expr>,
-    rhs_expr: Box<dyn Expr>,
+    lhs_expr: ExprBox,
+    rhs_expr: ExprBox,
     func: FnT,
 }
 
 impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
-    fn new<'a>(lhs_expr: Box<dyn Expr>, rhs_expr: Box<dyn Expr>, func: FnT) -> Self {
+    fn new<'a>(lhs_expr: ExprBox, rhs_expr: ExprBox, func: FnT) -> Self {
         BinaryIntegerOp {
             lhs_expr,
             rhs_expr,
@@ -115,25 +115,25 @@ impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
 impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
         Value::Integer((self.func)(
-            evaluate_to_int(globals, locals, &*self.lhs_expr),
-            evaluate_to_int(globals, locals, &*self.rhs_expr),
+            evaluate_to_int(globals, locals, &self.lhs_expr),
+            evaluate_to_int(globals, locals, &self.rhs_expr),
         ))
     }
 }
 
 struct BinaryBoolOp<FnT: Fn(bool) -> bool> {
-    lhs_expr: Box<dyn Expr>,
-    rhs_expr: Box<dyn Expr>,
+    lhs_expr: ExprBox,
+    rhs_expr: ExprBox,
     should_return: FnT,
 }
 
 impl<FnT: Fn(bool) -> bool> BinaryBoolOp<FnT> {
     fn helper(&self, globals: &Globals, locals: &Locals) -> bool {
-        let l = evaluate_to_bool(globals, locals, &*self.lhs_expr);
+        let l = evaluate_to_bool(globals, locals, &self.lhs_expr);
         if (self.should_return)(l) {
             l
         } else {
-            evaluate_to_bool(globals, locals, &*self.rhs_expr)
+            evaluate_to_bool(globals, locals, &self.rhs_expr)
         }
     }
 }
@@ -146,7 +146,7 @@ impl<FnT: Fn(bool) -> bool> Expr for BinaryBoolOp<FnT> {
 
 struct Call {
     func: FunctionId,
-    argument_exprs: Vec<Box<dyn Expr>>,
+    argument_exprs: Vec<ExprBox>,
 }
 
 impl Expr for Call {
@@ -159,13 +159,13 @@ impl Expr for Call {
 }
 
 struct Subscription {
-    array_expr: Box<dyn Expr>,
-    index_expr: Box<dyn Expr>,
+    array_expr: ExprBox,
+    index_expr: ExprBox,
 }
 
 impl Expr for Subscription {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        let index = evaluate_to_int(globals, locals, &*self.index_expr);
+        let index = evaluate_to_int(globals, locals, &self.index_expr);
         evaluate_to_array!(globals, locals, self.array_expr, array => {
             let array_borrow = array.borrow();
             array_borrow[index as usize].clone()
@@ -175,7 +175,7 @@ impl Expr for Subscription {
 
 impl LExpr for Subscription {
     fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value) {
-        let index = evaluate_to_int(globals, locals, &*self.index_expr);
+        let index = evaluate_to_int(globals, locals, &self.index_expr);
         evaluate_to_array!(globals, locals, self.array_expr, array => {
             let mut array_borrow = array.borrow_mut();
             array_borrow[index as usize] = value;
@@ -184,12 +184,12 @@ impl LExpr for Subscription {
 }
 
 struct BoolNot {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
 }
 
 impl Expr for BoolNot {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer(if evaluate_to_bool(globals, locals, &*self.expr) {
+        Value::Integer(if evaluate_to_bool(globals, locals, &self.expr) {
             0
         } else {
             1
@@ -198,13 +198,13 @@ impl Expr for BoolNot {
 }
 
 struct UnaryIntegerOp<FnT: Fn(i32) -> i32> {
-    expr: Box<dyn Expr>,
+    expr: ExprBox,
     func: FnT,
 }
 
 impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer((self.func)(evaluate_to_int(globals, locals, &*self.expr)))
+        Value::Integer((self.func)(evaluate_to_int(globals, locals, &self.expr)))
     }
 }
 
@@ -212,7 +212,7 @@ fn build_expr_list<'a>(
     globals: &Globals,
     scope_stack: &ScopeStack,
     exprs: &'a [ast::Expr],
-) -> BuildResult<'a, Vec<Box<dyn Expr>>> {
+) -> BuildResult<'a, Vec<ExprBox>> {
     let mut rv = Vec::new();
     let mut failures = StaticAnalysisErrors::new();
     for expr in exprs {
@@ -227,13 +227,22 @@ pub fn build_expr<'a>(
     globals: &Globals,
     scope_stack: &ScopeStack,
     expr: &'a ast::Expr,
-) -> BuildResult<'a, Box<dyn Expr>> {
+) -> BuildResult<'a, ExprBox> {
     use ast::BinaryOpCode::*;
     use ast::ExprKind::*;
     let mut failures = StaticAnalysisErrors::new();
     macro_rules! result {
         ( $expr:expr ) => {
-            (Box::new($expr), failures)
+            (
+                ExprBox {
+                    expr: Box::new($expr),
+                    site: CodeSite {
+                        start: expr.start,
+                        end: expr.end,
+                    },
+                },
+                failures,
+            )
         };
     }
     macro_rules! failure {

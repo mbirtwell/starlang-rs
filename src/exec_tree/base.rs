@@ -1,4 +1,5 @@
 pub use super::super::ast;
+use lexer::Location;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{self, Read};
@@ -180,6 +181,16 @@ pub trait Statement {
 
 pub trait Expr {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value;
+}
+
+pub(crate) struct CodeSite {
+    pub(crate) start: Location,
+    pub(crate) end: Location,
+}
+
+pub struct ExprBox {
+    pub(crate) expr: Box<dyn Expr>,
+    pub(crate) site: CodeSite,
 }
 
 pub trait LExpr {
