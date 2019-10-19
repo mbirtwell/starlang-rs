@@ -183,7 +183,8 @@ pub trait Expr {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value;
 }
 
-pub(crate) struct CodeSite {
+#[derive(Debug, PartialEq)]
+pub struct CodeSite {
     pub(crate) start: Location,
     pub(crate) end: Location,
 }

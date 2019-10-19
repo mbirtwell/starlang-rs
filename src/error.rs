@@ -12,6 +12,7 @@ pub enum OuterError {
     ReadInput,
     ParseError,
     StaticAnalysisFailed,
+    RuntimeFailure,
     OutputError,
     #[allow(dead_code)]
     FailedInitAnsiTerm(u64),
@@ -23,6 +24,7 @@ impl<'a> From<ExecError<'a>> for OuterError {
     fn from(value: ExecError<'a>) -> OuterError {
         match value {
             ExecError::StaticAnalysisFailed(_) => OuterError::StaticAnalysisFailed,
+            ExecError::RuntimeFailure(..) => OuterError::RuntimeFailure,
         }
     }
 }
@@ -110,6 +112,12 @@ fn write_exec_error_inner<'a>(
             for static_err in errs {
                 write_static_analysis_err(f, static_err, contents)?;
                 writeln!(f)?;
+            }
+        }
+        ExecError::RuntimeFailure(ref kind, ref stack) => {
+            writeln!(f, "{}", kind)?;
+            for site in stack {
+                write_locations(f, &site.start, &site.end, contents)?;
             }
         }
     }
