@@ -63,7 +63,7 @@ pub fn exec<'a>(
     build_funcs(&mut globals, programme)?;
     {
         let main_func = globals.get_main();
-        match main_func.call(&globals, vec![convert_args_to_values(args)]) {
+        match main_func.call(&globals, vec![convert_args_to_values(args)])? {
             Value::Integer(status_code) => Ok(status_code),
             Value::Array(_) => panic!("Array returned from main. Requires int."),
         }

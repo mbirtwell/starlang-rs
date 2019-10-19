@@ -1,4 +1,5 @@
 pub use super::super::ast;
+use exec_tree::error::ExecResult;
 use lexer::Location;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -21,7 +22,7 @@ impl From<Vec<Value>> for Value {
 }
 
 pub trait Callable {
-    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value;
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> ExecResult<Value>;
 }
 
 struct StarLangFunction {
@@ -176,11 +177,12 @@ pub enum FunctionState {
 }
 
 pub trait Statement {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState;
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals)
+        -> ExecResult<'static, FunctionState>;
 }
 
 pub trait Expr {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value;
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<'static, Value>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -238,35 +240,35 @@ impl ScopeStack {
 }
 
 impl Callable for StarLangFunction {
-    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value {
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> ExecResult<Value> {
         let mut locals = Locals { vars: args };
         locals.vars.reserve(self.max_locals);
         while locals.vars.len() < self.max_locals {
             locals.vars.push(Value::Integer(0));
         }
-        match exec_block(globals, &mut locals, &self.stmts) {
+        exec_block(globals, &mut locals, &self.stmts).map(|r| match r {
             FunctionState::Return(val) => val,
             FunctionState::NoReturn => Value::Integer(0),
-        }
+        })
     }
 }
 
-pub fn exec_block(
-    globals: &Globals,
+pub fn exec_block<'a, 'ast: 'a>(
+    globals: &Globals<'a>,
     locals: &mut Locals,
     stmts: &[Box<dyn Statement>],
-) -> FunctionState {
+) -> ExecResult<'ast, FunctionState> {
     for stmt in stmts {
-        match stmt.do_stmt(globals, locals) {
-            FunctionState::Return(val) => return FunctionState::Return(val),
+        match stmt.do_stmt(globals, locals)? {
+            FunctionState::Return(val) => return Ok(FunctionState::Return(val)),
             FunctionState::NoReturn => {}
         }
     }
-    FunctionState::NoReturn
+    Ok(FunctionState::NoReturn)
 }
 
 impl Callable for PlatformFunction {
-    fn call(&self, globals: &Globals, args: Vec<Value>) -> Value {
-        (self.func)(globals, args)
+    fn call(&self, globals: &Globals, args: Vec<Value>) -> ExecResult<Value> {
+        Ok((self.func)(globals, args))
     }
 }

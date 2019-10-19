@@ -1,14 +1,18 @@
 use super::base::*;
 use super::error::BuildResult;
 use super::expressions::{build_expr, build_lexpr, evaluate_to_bool, Identifier};
+use exec_tree::error::ExecResult;
 
 struct Return {
     expr: ExprBox,
 }
 
 impl Statement for Return {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        FunctionState::Return(self.expr.expr.evaluate(globals, locals))
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
+        self.expr
+            .expr
+            .evaluate(globals, locals)
+            .map(|v| FunctionState::Return(v))
     }
 }
 
@@ -18,10 +22,10 @@ struct Assign {
 }
 
 impl Statement for Assign {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
-        let value = self.rexpr.expr.evaluate(globals, locals);
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
+        let value = self.rexpr.expr.evaluate(globals, locals)?;
         self.lexpr.assign(globals, locals, value);
-        FunctionState::NoReturn
+        Ok(FunctionState::NoReturn)
     }
 }
 
@@ -30,9 +34,9 @@ struct ExprStatement {
 }
 
 impl Statement for ExprStatement {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
         self.expr.expr.evaluate(globals, locals);
-        FunctionState::NoReturn
+        Ok(FunctionState::NoReturn)
     }
 }
 
@@ -42,11 +46,11 @@ struct IfStatement {
 }
 
 impl Statement for IfStatement {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
         if evaluate_to_bool(globals, locals, &self.expr) {
             exec_block(globals, locals, &self.stmts)
         } else {
-            FunctionState::NoReturn
+            Ok(FunctionState::NoReturn)
         }
     }
 }
@@ -57,13 +61,13 @@ struct WhileStatement {
 }
 
 impl Statement for WhileStatement {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> FunctionState {
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
         while evaluate_to_bool(globals, locals, &self.expr) {
-            if let FunctionState::Return(v) = exec_block(globals, locals, &self.stmts) {
-                return FunctionState::Return(v);
+            if let FunctionState::Return(v) = exec_block(globals, locals, &self.stmts)? {
+                return Ok(FunctionState::Return(v));
             }
         }
-        FunctionState::NoReturn
+        Ok(FunctionState::NoReturn)
     }
 }
 

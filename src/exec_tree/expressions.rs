@@ -1,23 +1,38 @@
 use super::base::*;
 use super::error::*;
 
-fn evaluate_expr_list(globals: &Globals, locals: &Locals, exprs: &[ExprBox]) -> Vec<Value> {
+fn evaluate_expr_list<'a, 'ast: 'a>(
+    globals: &'a Globals,
+    locals: &Locals,
+    exprs: &[ExprBox],
+) -> ExecResult<'ast, Vec<Value>> {
     exprs
         .iter()
         .map(|ref expr| expr.expr.evaluate(globals, locals))
         .collect()
 }
 
-fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &ExprBox) -> i32 {
-    match expr.expr.evaluate(globals, locals) {
-        Value::Integer(n) => n,
-        Value::Array(_) => panic!("Required int got array"),
+fn evaluate_to_int<'a, 'ast: 'a>(
+    globals: &'a Globals,
+    locals: &Locals,
+    expr: &ExprBox,
+) -> ExecResult<'ast, i32> {
+    match expr.expr.evaluate(globals, locals)? {
+        Value::Integer(n) => Ok(n),
+        Value::Array(_) => Err(runtime_failure(
+            RuntimeFailureKind::ExpectedIntGotArray,
+            expr,
+        )),
     }
 }
 
-pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &ExprBox) -> bool {
-    match expr.expr.evaluate(globals, locals) {
-        Value::Integer(n) => n != 0,
+pub fn evaluate_to_bool<'a, 'ast: 'a>(
+    globals: &'a Globals,
+    locals: &Locals,
+    expr: &ExprBox,
+) -> ExecResult<'ast, bool> {
+    match expr.expr.evaluate(globals, locals)? {
+        Value::Integer(n) => Ok(n != 0),
         Value::Array(_) => unimplemented!(),
     }
 }
@@ -34,7 +49,7 @@ macro_rules! evaluate_to_array {
 struct BadExpr {}
 
 impl Expr for BadExpr {
-    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> ExecResult<'static, Value> {
         unreachable!("Attempt to evaluate bad expression")
     }
 }
@@ -44,8 +59,8 @@ struct IntegerLiteral {
 }
 
 impl Expr for IntegerLiteral {
-    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
-        Value::Integer(self.value)
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::Integer(self.value))
     }
 }
 
@@ -54,13 +69,13 @@ struct StringLiteral {
 }
 
 impl Expr for StringLiteral {
-    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> Value {
-        Value::from(
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::from(
             self.s
                 .chars()
                 .map(|c| Value::Integer(c as i32))
                 .collect::<Vec<_>>(),
-        )
+        ))
     }
 }
 
@@ -69,8 +84,12 @@ struct ArrayLiteral {
 }
 
 impl Expr for ArrayLiteral {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::from(evaluate_expr_list(globals, locals, &self.value_exprs))
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::from(evaluate_expr_list(
+            globals,
+            locals,
+            &self.value_exprs,
+        )?))
     }
 }
 
@@ -91,8 +110,8 @@ impl LExpr for Identifier {
 }
 
 impl Expr for Identifier {
-    fn evaluate(&self, _globals: &Globals, locals: &Locals) -> Value {
-        locals.vars[self.var_id].clone()
+    fn evaluate(&self, _globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        Ok(locals.vars[self.var_id].clone())
     }
 }
 
@@ -113,11 +132,11 @@ impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
 }
 
 impl<FnT: Fn(i32, i32) -> i32> Expr for BinaryIntegerOp<FnT> {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer((self.func)(
-            evaluate_to_int(globals, locals, &self.lhs_expr),
-            evaluate_to_int(globals, locals, &self.rhs_expr),
-        ))
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::Integer((self.func)(
+            evaluate_to_int(globals, locals, &self.lhs_expr)?,
+            evaluate_to_int(globals, locals, &self.rhs_expr)?,
+        )))
     }
 }
 
@@ -128,10 +147,10 @@ struct BinaryBoolOp<FnT: Fn(bool) -> bool> {
 }
 
 impl<FnT: Fn(bool) -> bool> BinaryBoolOp<FnT> {
-    fn helper(&self, globals: &Globals, locals: &Locals) -> bool {
-        let l = evaluate_to_bool(globals, locals, &self.lhs_expr);
+    fn helper(&self, globals: &Globals, locals: &Locals) -> ExecResult<bool> {
+        let l = evaluate_to_bool(globals, locals, &self.lhs_expr)?;
         if (self.should_return)(l) {
-            l
+            Ok(l)
         } else {
             evaluate_to_bool(globals, locals, &self.rhs_expr)
         }
@@ -139,8 +158,9 @@ impl<FnT: Fn(bool) -> bool> BinaryBoolOp<FnT> {
 }
 
 impl<FnT: Fn(bool) -> bool> Expr for BinaryBoolOp<FnT> {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer(if self.helper(globals, locals) { 1 } else { 0 })
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        self.helper(globals, locals)
+            .map(|v| Value::Integer(if v { 1 } else { 0 }))
     }
 }
 
@@ -150,10 +170,10 @@ struct Call {
 }
 
 impl Expr for Call {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
         globals.lookup_func(self.func).call(
             globals,
-            evaluate_expr_list(globals, locals, &self.argument_exprs),
+            evaluate_expr_list(globals, locals, &self.argument_exprs)?,
         )
     }
 }
@@ -164,11 +184,11 @@ struct Subscription {
 }
 
 impl Expr for Subscription {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
         let index = evaluate_to_int(globals, locals, &self.index_expr);
         evaluate_to_array!(globals, locals, self.array_expr, array => {
             let array_borrow = array.borrow();
-            array_borrow[index as usize].clone()
+            Ok(array_borrow[index as usize].clone())
         })
     }
 }
@@ -188,12 +208,14 @@ struct BoolNot {
 }
 
 impl Expr for BoolNot {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer(if evaluate_to_bool(globals, locals, &self.expr) {
-            0
-        } else {
-            1
-        })
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::Integer(
+            if evaluate_to_bool(globals, locals, &self.expr) {
+                0
+            } else {
+                1
+            },
+        ))
     }
 }
 
@@ -203,8 +225,10 @@ struct UnaryIntegerOp<FnT: Fn(i32) -> i32> {
 }
 
 impl<FnT: Fn(i32) -> i32> Expr for UnaryIntegerOp<FnT> {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> Value {
-        Value::Integer((self.func)(evaluate_to_int(globals, locals, &self.expr)))
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        Ok(Value::Integer((self.func)(evaluate_to_int(
+            globals, locals, &self.expr,
+        )?)))
     }
 }
 
