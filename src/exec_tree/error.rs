@@ -24,13 +24,7 @@ pub enum ExecError {
 pub type ExecResult<T> = std::result::Result<T, ExecError>;
 
 pub fn runtime_failure(kind: RuntimeFailureKind, expr: &ExprBox) -> ExecError {
-    ExecError::RuntimeFailure(
-        kind,
-        vec![CodeSite {
-            start: expr.site.start,
-            end: expr.site.end,
-        }],
-    )
+    ExecError::RuntimeFailure(kind, vec![expr.site])
 }
 
 #[derive(Debug, PartialEq)]
