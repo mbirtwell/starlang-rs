@@ -49,9 +49,12 @@ impl FileData {
     }
     pub fn read(&mut self, name: String) -> OuterResult<FileHandle> {
         let contents = read_file(&name)?;
+        Ok(self.add(name, contents))
+    }
+    pub fn add(&mut self, name: String, contents: String) -> FileHandle {
         self.file_names.push(name);
         self.file_contents.push(contents);
-        Ok(FileHandle((self.file_contents.len() - 1) as u32))
+        FileHandle((self.file_contents.len() - 1) as u32)
     }
     pub fn get_name(&self, handle: FileHandle) -> &str {
         &self.file_names[handle.0 as usize]

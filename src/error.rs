@@ -280,7 +280,6 @@ mod tests {
     use super::super::grammar::parse_Programme;
     use super::super::lexer::{Location, Matcher};
     use super::*;
-    use std::collections::HashMap;
 
     macro_rules! test_parse_error {
         ($test_name:ident, $input:expr, $expected:expr) => {
@@ -288,12 +287,9 @@ mod tests {
             fn $test_name() {
                 let text = $input;
                 let file_name = "test.sl";
-                let contents = {
-                    let mut contents = HashMap::new();
-                    contents.insert(file_name, text);
-                    contents
-                };
-                let matcher = Matcher::new(file_name, text);
+                let mut contents = FileData::new();
+                let file = contents.add(file_name.to_string(), text.to_string());
+                let matcher = Matcher::new(file, text);
                 let parse_err = parse_Programme(matcher).unwrap_err();
                 let mut output = Vec::new();
                 write_parse_error(&mut output, parse_err, &contents).unwrap();
@@ -355,13 +351,13 @@ Expected one of \"{{\"
             #[test]
             fn $test_name() {
                 let file_contents = $content;
-                let mut contents = HashMap::new();
-                contents.insert("test.sl", file_contents);
+                let mut contents = FileData::new();
+                let file = contents.add("test.sl".to_string(), file_contents.to_string());
                 let mut output = Vec::new();
                 write_locations(
                     &mut output,
-                    &Location::new("test.sl", $start_line, $start_line_offset, $start_offset),
-                    &Location::new("test.sl", $end_line, $end_line_offset, $end_offset),
+                    &Location::new(file, $start_line, $start_line_offset, $start_offset),
+                    &Location::new(file, $end_line, $end_line_offset, $end_offset),
                     &contents,
                 )
                 .unwrap();

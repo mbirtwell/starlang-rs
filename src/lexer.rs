@@ -378,13 +378,12 @@ mod tests {
     use super::ErrorKind::*;
     use super::Tok::*;
     use super::*;
-    use file_data::FileData;
 
     macro_rules! test_lex {
         ( $test_name:ident, $input:expr, $expected:expr ) => {
             #[test]
             fn $test_name() {
-                let matcher = Matcher::new("test", $input);
+                let matcher = Matcher::new(FileHandle::dummy(), $input);
                 let output = matcher.collect::<Vec<_>>();
                 assert_eq!(output, $expected)
             }
@@ -405,7 +404,7 @@ mod tests {
         ( $test_name:ident, $input:expr, $expected:expr) => {
             #[test]
             fn $test_name() {
-                let matcher = Matcher::new("test", $input);
+                let matcher = Matcher::new(FileHandle::dummy(), $input);
                 let err = matcher.skip_while(|x| x.is_ok()).next();
                 assert_eq!(err, Some(Err($expected)));
             }

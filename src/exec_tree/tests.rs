@@ -2,6 +2,7 @@ use super::super::grammar::parse_Programme;
 use super::super::lexer::{Location, Matcher};
 use super::error::*;
 use super::main::exec;
+use file_data::FileHandle;
 
 struct ProgResult {
     status_code: i32,
@@ -25,7 +26,7 @@ fn compile_and_run_programme_with_args_and_input(
     args: Vec<String>,
     mut input: &'static [u8],
 ) -> ProgResult {
-    let prog = parse_Programme(Matcher::new("test", text)).unwrap();
+    let prog = parse_Programme(Matcher::new(FileHandle::dummy(), text)).unwrap();
     let mut output = Vec::new();
     let status_code = { exec(&prog, args, &mut input, &mut output) };
     ProgResult {
@@ -51,7 +52,7 @@ macro_rules! test_return_expr {
         fn $test_name() {
             let result = compile_and_run_programme(concat!(
                 "\
-                                function main (args) {
+                                                        function main (args) {
                     return ",
                 $expr,
                 ";
@@ -236,7 +237,7 @@ macro_rules! test_bool_op {
         fn $test_name() {
             let result = compile_and_run_programme(concat!(
                 "\
-                                    function f1(rv) {
+                                                            function f1(rv) {
                         putc('x');
                         return rv;
                     }
@@ -391,7 +392,8 @@ function main() {
     unk(1, 2);
 }
     "#;
-    let prog = parse_Programme(Matcher::new("test.sl", text)).unwrap();
+    let file = FileHandle::dummy();
+    let prog = parse_Programme(Matcher::new(file, text)).unwrap();
     let mut output = Vec::new();
     let mut input: &'static [u8] = &[];
     {
@@ -399,9 +401,9 @@ function main() {
         assert_eq!(
             err,
             ExecError::StaticAnalysisFailed(vec![StaticAnalysisError::CallUnknownFunction(
-                "unk",
-                Location::new("test.sl", 3, 4, 23),
-                Location::new("test.sl", 3, 13, 32),
+                "unk".to_string(),
+                Location::new(file, 3, 4, 23),
+                Location::new(file, 3, 13, 32),
             )])
         );
     };
