@@ -1,23 +1,19 @@
 use super::base::*;
 use super::error::*;
 
-fn evaluate_expr_list<'a, 'ast: 'a>(
-    globals: &'a Globals,
+fn evaluate_expr_list(
+    globals: &Globals,
     locals: &Locals,
     exprs: &[ExprBox],
-) -> ExecResult<'ast, Vec<Value>> {
+) -> ExecResult<Vec<Value>> {
     exprs
         .iter()
-        .map(|ref expr| expr.expr.evaluate(globals, locals))
+        .map(|ref expr| expr.evaluate(globals, locals))
         .collect()
 }
 
-fn evaluate_to_int<'a, 'ast: 'a>(
-    globals: &'a Globals,
-    locals: &Locals,
-    expr: &ExprBox,
-) -> ExecResult<'ast, i32> {
-    match expr.expr.evaluate(globals, locals)? {
+fn evaluate_to_int(globals: &Globals, locals: &Locals, expr: &ExprBox) -> ExecResult<i32> {
+    match expr.evaluate(globals, locals)? {
         Value::Integer(n) => Ok(n),
         Value::Array(_) => Err(runtime_failure(
             RuntimeFailureKind::ExpectedIntGotArray,
@@ -26,12 +22,8 @@ fn evaluate_to_int<'a, 'ast: 'a>(
     }
 }
 
-pub fn evaluate_to_bool<'a, 'ast: 'a>(
-    globals: &'a Globals,
-    locals: &Locals,
-    expr: &ExprBox,
-) -> ExecResult<'ast, bool> {
-    match expr.expr.evaluate(globals, locals)? {
+pub fn evaluate_to_bool(globals: &Globals, locals: &Locals, expr: &ExprBox) -> ExecResult<bool> {
+    match expr.evaluate(globals, locals)? {
         Value::Integer(n) => Ok(n != 0),
         Value::Array(_) => unimplemented!(),
     }
@@ -39,7 +31,7 @@ pub fn evaluate_to_bool<'a, 'ast: 'a>(
 
 macro_rules! evaluate_to_array {
     ($globals:expr, $locals:expr, $expr:expr, $ident:ident => $block:block) => {
-        match $expr.expr.evaluate($globals, $locals) {
+        match $expr.expr.evaluate($globals, $locals)? {
             Value::Integer(_) => panic!("Required array got int"),
             Value::Array(ref $ident) => $block,
         }
@@ -49,7 +41,7 @@ macro_rules! evaluate_to_array {
 struct BadExpr {}
 
 impl Expr for BadExpr {
-    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> ExecResult<'static, Value> {
+    fn evaluate(&self, _globals: &Globals, _locals: &Locals) -> ExecResult<Value> {
         unreachable!("Attempt to evaluate bad expression")
     }
 }
@@ -104,8 +96,9 @@ impl Identifier {
 }
 
 impl LExpr for Identifier {
-    fn assign(&self, _globals: &Globals, locals: &mut Locals, value: Value) {
+    fn assign(&self, _globals: &Globals, locals: &mut Locals, value: Value) -> ExecResult<()> {
         locals.vars[self.var_id] = value;
+        Ok(())
     }
 }
 
@@ -176,6 +169,21 @@ impl Expr for Call {
             evaluate_expr_list(globals, locals, &self.argument_exprs)?,
         )
     }
+
+    fn evaluate_ex(
+        &self,
+        globals: &Globals,
+        locals: &Locals,
+        site: &CodeSite,
+    ) -> ExecResult<Value> {
+        self.evaluate(globals, locals).map_err(|mut e| {
+            match &mut e {
+                ExecError::RuntimeFailure(_, stack) => stack.push(*site),
+                _ => {}
+            }
+            e
+        })
+    }
 }
 
 struct Subscription {
@@ -185,7 +193,7 @@ struct Subscription {
 
 impl Expr for Subscription {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
-        let index = evaluate_to_int(globals, locals, &self.index_expr);
+        let index = evaluate_to_int(globals, locals, &self.index_expr)?;
         evaluate_to_array!(globals, locals, self.array_expr, array => {
             let array_borrow = array.borrow();
             Ok(array_borrow[index as usize].clone())
@@ -194,12 +202,13 @@ impl Expr for Subscription {
 }
 
 impl LExpr for Subscription {
-    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value) {
-        let index = evaluate_to_int(globals, locals, &self.index_expr);
+    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value) -> ExecResult<()> {
+        let index = evaluate_to_int(globals, locals, &self.index_expr)?;
         evaluate_to_array!(globals, locals, self.array_expr, array => {
             let mut array_borrow = array.borrow_mut();
             array_borrow[index as usize] = value;
-        })
+        });
+        Ok(())
     }
 }
 
@@ -210,7 +219,7 @@ struct BoolNot {
 impl Expr for BoolNot {
     fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
         Ok(Value::Integer(
-            if evaluate_to_bool(globals, locals, &self.expr) {
+            if evaluate_to_bool(globals, locals, &self.expr)? {
                 0
             } else {
                 1
@@ -346,7 +355,9 @@ pub fn build_expr<'a>(
                 })
             } else {
                 failure!(StaticAnalysisError::CallUnknownFunction(
-                    fname, expr.start, expr.end,
+                    fname.to_string(),
+                    expr.start,
+                    expr.end,
                 ))
             }
         }

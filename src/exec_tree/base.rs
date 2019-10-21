@@ -177,15 +177,22 @@ pub enum FunctionState {
 }
 
 pub trait Statement {
-    fn do_stmt(&self, globals: &Globals, locals: &mut Locals)
-        -> ExecResult<'static, FunctionState>;
+    fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState>;
 }
 
 pub trait Expr {
-    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<'static, Value>;
+    fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value>;
+    fn evaluate_ex(
+        &self,
+        globals: &Globals,
+        locals: &Locals,
+        _site: &CodeSite,
+    ) -> ExecResult<Value> {
+        self.evaluate(globals, locals)
+    }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct CodeSite {
     pub(crate) start: Location,
     pub(crate) end: Location,
@@ -196,8 +203,14 @@ pub struct ExprBox {
     pub(crate) site: CodeSite,
 }
 
+impl ExprBox {
+    pub(crate) fn evaluate(&self, globals: &Globals, locals: &Locals) -> ExecResult<Value> {
+        self.expr.evaluate_ex(globals, locals, &self.site)
+    }
+}
+
 pub trait LExpr {
-    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value);
+    fn assign(&self, globals: &Globals, locals: &mut Locals, value: Value) -> ExecResult<()>;
 }
 
 pub struct ScopeStack {
@@ -253,11 +266,11 @@ impl Callable for StarLangFunction {
     }
 }
 
-pub fn exec_block<'a, 'ast: 'a>(
-    globals: &Globals<'a>,
+pub fn exec_block(
+    globals: &Globals,
     locals: &mut Locals,
     stmts: &[Box<dyn Statement>],
-) -> ExecResult<'ast, FunctionState> {
+) -> ExecResult<FunctionState> {
     for stmt in stmts {
         match stmt.do_stmt(globals, locals)? {
             FunctionState::Return(val) => return Ok(FunctionState::Return(val)),

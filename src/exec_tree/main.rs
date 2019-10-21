@@ -9,7 +9,7 @@ fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
     }
 }
 
-fn build_funcs<'a>(globals: &mut Globals, programme: &'a Vec<ast::Function>) -> ExecResult<'a, ()> {
+fn build_funcs<'a>(globals: &mut Globals, programme: &'a Vec<ast::Function>) -> ExecResult<()> {
     let mut failures = StaticAnalysisErrors::new();
     for func in programme {
         let ((stmts, max_locals), func_failures) = build_func(globals, func);
@@ -54,7 +54,7 @@ pub fn exec<'a>(
     args: Vec<String>,
     input: &mut dyn Read,
     output: &mut dyn Write,
-) -> ExecResult<'a, i32> {
+) -> ExecResult<i32> {
     let mut globals = Globals::new(input, output);
     collect_funcs(&mut globals, programme);
     if !globals.has_main() {

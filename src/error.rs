@@ -20,8 +20,8 @@ pub enum OuterError {
 pub type OuterResult<T> = std::result::Result<T, OuterError>;
 pub type ParseError<'input> = lalrpop_util::ParseError<Location, Tok<'input>, lexer::Error>;
 
-impl<'a> From<ExecError<'a>> for OuterError {
-    fn from(value: ExecError<'a>) -> OuterError {
+impl<'a> From<ExecError> for OuterError {
+    fn from(value: ExecError) -> OuterError {
         match value {
             ExecError::StaticAnalysisFailed(_) => OuterError::StaticAnalysisFailed,
             ExecError::RuntimeFailure(..) => OuterError::RuntimeFailure,
@@ -130,7 +130,7 @@ fn write_static_analysis_err<'a>(
     contents: &FileData,
 ) -> io::Result<()> {
     match *err {
-        StaticAnalysisError::CallUnknownFunction(fname, start, end) => {
+        StaticAnalysisError::CallUnknownFunction(ref fname, start, end) => {
             error!(f, "Call to unknown function {:?}", fname)?;
             write_locations(f, &start, &end, contents)?;
         }

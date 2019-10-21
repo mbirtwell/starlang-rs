@@ -17,11 +17,11 @@ impl Display for RuntimeFailureKind {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ExecError<'a> {
-    StaticAnalysisFailed(Vec<StaticAnalysisError<'a>>),
+pub enum ExecError {
+    StaticAnalysisFailed(Vec<StaticAnalysisError>),
     RuntimeFailure(RuntimeFailureKind, Vec<CodeSite>),
 }
-pub type ExecResult<'a, T> = std::result::Result<T, ExecError<'a>>;
+pub type ExecResult<T> = std::result::Result<T, ExecError>;
 
 pub fn runtime_failure(kind: RuntimeFailureKind, expr: &ExprBox) -> ExecError {
     ExecError::RuntimeFailure(
@@ -34,9 +34,9 @@ pub fn runtime_failure(kind: RuntimeFailureKind, expr: &ExprBox) -> ExecError {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum StaticAnalysisError<'a> {
-    CallUnknownFunction(&'a str, Location, Location),
+pub enum StaticAnalysisError {
+    CallUnknownFunction(String, Location, Location),
 }
 
-pub type StaticAnalysisErrors<'a> = Vec<StaticAnalysisError<'a>>;
-pub type BuildResult<'a, T> = (T, StaticAnalysisErrors<'a>);
+pub type StaticAnalysisErrors = Vec<StaticAnalysisError>;
+pub type BuildResult<'a, T> = (T, StaticAnalysisErrors);

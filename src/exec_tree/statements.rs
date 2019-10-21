@@ -10,7 +10,6 @@ struct Return {
 impl Statement for Return {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
         self.expr
-            .expr
             .evaluate(globals, locals)
             .map(|v| FunctionState::Return(v))
     }
@@ -23,8 +22,8 @@ struct Assign {
 
 impl Statement for Assign {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
-        let value = self.rexpr.expr.evaluate(globals, locals)?;
-        self.lexpr.assign(globals, locals, value);
+        let value = self.rexpr.evaluate(globals, locals)?;
+        self.lexpr.assign(globals, locals, value)?;
         Ok(FunctionState::NoReturn)
     }
 }
@@ -35,7 +34,7 @@ struct ExprStatement {
 
 impl Statement for ExprStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
-        self.expr.expr.evaluate(globals, locals);
+        self.expr.evaluate(globals, locals)?;
         Ok(FunctionState::NoReturn)
     }
 }
@@ -47,7 +46,7 @@ struct IfStatement {
 
 impl Statement for IfStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
-        if evaluate_to_bool(globals, locals, &self.expr) {
+        if evaluate_to_bool(globals, locals, &self.expr)? {
             exec_block(globals, locals, &self.stmts)
         } else {
             Ok(FunctionState::NoReturn)
@@ -62,7 +61,7 @@ struct WhileStatement {
 
 impl Statement for WhileStatement {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
-        while evaluate_to_bool(globals, locals, &self.expr) {
+        while evaluate_to_bool(globals, locals, &self.expr)? {
             if let FunctionState::Return(v) = exec_block(globals, locals, &self.stmts)? {
                 return Ok(FunctionState::Return(v));
             }
