@@ -1,5 +1,5 @@
 use error::{OuterError, OuterResult};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::{fs, io};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -28,13 +28,7 @@ fn read_file(path: &str) -> OuterResult<String> {
     match read_file_inner(path) {
         Ok(rv) => Ok(rv),
         Err(err) => {
-            writeln!(
-                io::stderr(),
-                "error: Failed to read file '{}': {}",
-                path,
-                err
-            )
-            .unwrap();
+            eprintln!("error: Failed to read file '{}': {}", path, err);
             Err(OuterError::ReadInput)
         }
     }

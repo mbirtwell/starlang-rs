@@ -124,10 +124,7 @@ impl Location {
 //}
 
 fn is_identifier_char(c: char) -> bool {
-    match c {
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => true,
-        _ => false,
-    }
+    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_')
 }
 
 struct FindTokenStartResult<'input> {
@@ -173,7 +170,7 @@ impl<'input> Matcher<'input> {
                         self.location.line_offset_chars += 1;
                     } else {
                         return FindTokenStartResult {
-                            offset: offset,
+                            offset,
                             state: $state,
                         };
                     }
@@ -298,7 +295,7 @@ impl<'input> Matcher<'input> {
         use std::str::FromStr;
         let number_length = self
             .text
-            .find(|c| c < '0' || c > '9')
+            .find(|c| !('0'..='9').contains(&c))
             .unwrap_or(self.text.len());
         let tok = Tok::Integer(i32::from_str(&self.text[..number_length]).unwrap());
         self.token(tok, number_length)
@@ -511,10 +508,10 @@ mod tests {
         extract_not: "not" => Not,
         extract_or: "or" => Or
     }
-    test_lex! {ignore_comments, indoc!("
+    test_lex! {ignore_comments, indoc!{r#"
             ident # A comment
             and
-        "),
+        "#},
         vec![
             tok(Identifier("ident"), 1, 0, 0, 5),
             tok(And, 2, 0, 18, 3),
@@ -565,5 +562,4 @@ mod tests {
     test_err! {return_bad_char_literal, "if 'as' {", err(BadCharLiteral, 1, 3, 3)}
     test_err! {return_eof_in_string, r#"let a = "seffsd"#, err(EofInString, 1, 8, 8)}
     test_err! {return_illegal_character_return, "if\r{", err(MisPlacedCharacterReturn, 1, 2, 2)}
-
 }

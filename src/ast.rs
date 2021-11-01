@@ -10,11 +10,11 @@ pub struct Function<'a> {
 
 impl<'a> Function<'a> {
     pub fn new(name: &str, arguments: Vec<&'a str>, stmts: Vec<Statement<'a>>) -> Function<'a> {
-        return Function {
+        Function {
             name: name.into(),
             arguments,
             stmts,
-        };
+        }
     }
 }
 
@@ -51,8 +51,8 @@ macro_rules! cons {
         pub fn $name(start: Location, $( $arg: $typ , )* end: Location) -> Self {
             Self {
                 kind: ExprKind::$kind($( $arg.into(), )*),
-                start: start,
-                end: end,
+                start,
+                end,
             }
         }
     };
@@ -103,19 +103,16 @@ pub enum UnaryOpCode {
     BoolNot,
 }
 
-fn write_id_list(fmt: &mut Formatter, ids: &Vec<&str>) -> Result<(), Error> {
+fn write_id_list(fmt: &mut Formatter, ids: &[&str]) -> Result<(), Error> {
     use std::fmt::Write;
     fmt.write_char('[')?;
     let mut id_iter = ids.iter();
-    match id_iter.next() {
-        Some(ref s) => {
-            fmt.write_str(s)?;
-            for id in id_iter {
-                fmt.write_str(", ")?;
-                fmt.write_str(id)?;
-            }
+    if let Some(s) = id_iter.next() {
+        fmt.write_str(s)?;
+        for id in id_iter {
+            fmt.write_str(", ")?;
+            fmt.write_str(id)?;
         }
-        None => (),
     }
     fmt.write_char(']')
 }

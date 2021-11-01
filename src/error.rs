@@ -31,10 +31,10 @@ impl<'a> From<ExecError> for OuterError {
 
 macro_rules! error {
     ( $out:expr, $fmt:expr ) => {
-        writeln!($out, concat!("{}: ", $fmt), Red.paint("error"));
+        writeln!($out, concat!("{}: ", $fmt), Red.paint("error"))
     };
     ( $out:expr, $fmt:expr, $( $arg:expr ),* ) => {
-        writeln!($out, concat!("{}: ", $fmt), Red.paint("error"), $( $arg, )*);
+        writeln!($out, concat!("{}: ", $fmt), Red.paint("error"), $( $arg, )*)
     };
 }
 
@@ -250,7 +250,7 @@ fn write_next_line(
     line_end: usize,
     file_content: &str,
 ) -> io::Result<()> {
-    if let Some(next_line) = file_content[line_end..].lines().skip(1).next() {
+    if let Some(next_line) = file_content[line_end..].lines().nth(1) {
         writeln!(f, "{} |{}", location.line + 1, next_line)?;
     }
     Ok(())
@@ -419,5 +419,4 @@ At: test.sl:3
 4 |
 ", Red.bold().paint("something()"))
         }
-
 }

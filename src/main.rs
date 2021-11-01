@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io;
 use std::process::exit;
 
 extern crate ansi_term;
@@ -12,6 +12,7 @@ use argparse::{ArgumentParser, Collect, Store};
 
 pub mod ast;
 #[rustfmt::skip]
+#[allow(clippy::all)]
 #[allow(unused_parens)]
 pub mod grammar;
 mod exec_tree;
@@ -52,12 +53,10 @@ fn main() {
     let exit_status = match run(stdlib_path, script_path, args) {
         Ok(n) => n,
         Err(OuterError::FailedInitAnsiTerm(err_code)) => {
-            writeln!(
-                io::stderr(),
+            eprintln!(
                 "Failed to initialise ansi terminal support. err code: {}",
                 err_code,
-            )
-            .unwrap();
+            );
             254
         }
         Err(_) => 254,

@@ -3,20 +3,20 @@ use super::error::*;
 use super::statements::build_block;
 use std::io::{Read, Write};
 
-fn collect_funcs(globals: &mut Globals, programme: &Vec<ast::Function>) {
+fn collect_funcs(globals: &mut Globals, programme: &[ast::Function]) {
     for func in programme {
         globals.declare_func(func);
     }
 }
 
-fn build_funcs<'a>(globals: &mut Globals, programme: &'a Vec<ast::Function>) -> ExecResult<()> {
+fn build_funcs(globals: &mut Globals, programme: &[ast::Function]) -> ExecResult<()> {
     let mut failures = StaticAnalysisErrors::new();
     for func in programme {
         let ((stmts, max_locals), func_failures) = build_func(globals, func);
         globals.define_func(&func.name, stmts, max_locals);
         failures.extend(func_failures);
     }
-    if failures.len() > 0 {
+    if !failures.is_empty() {
         Err(ExecError::StaticAnalysisFailed(failures))
     } else {
         Ok(())
@@ -50,16 +50,14 @@ fn convert_args_to_values(args: Vec<String>) -> Value {
 }
 
 pub fn exec<'a>(
-    programme: &'a Vec<ast::Function>,
+    programme: &'a [ast::Function],
     args: Vec<String>,
     input: &mut dyn Read,
     output: &mut dyn Write,
 ) -> ExecResult<i32> {
     let mut globals = Globals::new(input, output);
     collect_funcs(&mut globals, programme);
-    if !globals.has_main() {
-        panic!("No main function defined");
-    }
+    assert!(globals.has_main(), "No main function defined");
     build_funcs(&mut globals, programme)?;
     {
         let main_func = globals.get_main();

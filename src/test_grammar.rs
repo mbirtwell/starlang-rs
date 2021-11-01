@@ -10,7 +10,7 @@ macro_rules! test_expr {
                 grammar::parse_Expr(Matcher::new(FileHandle::dummy(), $text)).unwrap()
             ),
             $ast
-        );
+        )
     };
 }
 
@@ -22,7 +22,7 @@ macro_rules! test_stmt {
                 grammar::parse_Statement(Matcher::new(FileHandle::dummy(), $text)).unwrap()
             ),
             $ast
-        );
+        )
     };
 }
 

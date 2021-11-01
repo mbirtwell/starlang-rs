@@ -74,7 +74,7 @@ fn starlang_putc(globals: &Globals, args: Vec<Value>) -> Value {
     match args[0] {
         Value::Integer(c) => {
             let output = [c as u8];
-            globals.output.borrow_mut().write(&output).unwrap();
+            globals.output.borrow_mut().write_all(&output).unwrap();
             Value::Integer(0)
         }
         _ => {
@@ -125,7 +125,7 @@ impl<'b> Globals<'b> {
     }
     pub fn define_func(&mut self, name: &str, stmts: Vec<Box<dyn Statement>>, max_locals: usize) {
         match self.function_declarations.get(name) {
-            Some(ref decl) => {
+            Some(decl) => {
                 if self.functions.len() != decl.id.idx {
                     panic!(
                         "Attempting to define function {} out of declaration order.",

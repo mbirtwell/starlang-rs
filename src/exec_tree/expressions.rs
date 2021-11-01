@@ -8,7 +8,7 @@ fn evaluate_expr_list(
 ) -> ExecResult<Vec<Value>> {
     exprs
         .iter()
-        .map(|ref expr| expr.evaluate(globals, locals))
+        .map(|expr| expr.evaluate(globals, locals))
         .collect()
 }
 
@@ -115,7 +115,7 @@ struct BinaryIntegerOp<FnT: Fn(i32, i32) -> i32> {
 }
 
 impl<FnT: Fn(i32, i32) -> i32 + 'static> BinaryIntegerOp<FnT> {
-    fn new<'a>(lhs_expr: ExprBox, rhs_expr: ExprBox, func: FnT) -> Self {
+    fn new(lhs_expr: ExprBox, rhs_expr: ExprBox, func: FnT) -> Self {
         BinaryIntegerOp {
             lhs_expr,
             rhs_expr,
@@ -177,9 +177,8 @@ impl Expr for Call {
         site: &CodeSite,
     ) -> ExecResult<Value> {
         self.evaluate(globals, locals).map_err(|mut e| {
-            match &mut e {
-                ExecError::RuntimeFailure(_, stack) => stack.push(*site),
-                _ => {}
+            if let ExecError::RuntimeFailure(_, stack) = &mut e {
+                stack.push(*site)
             }
             e
         })
@@ -301,8 +300,8 @@ pub fn build_expr<'a>(
     match expr.kind {
         Number(n) => result!(IntegerLiteral { value: n }),
         Char(c) => result!(IntegerLiteral { value: c as i32 }),
-        String(ref s) => result!(StringLiteral { s: s.to_string() }),
-        Identifier(ref name) => result!(self::Identifier::new(scope_stack.get(name))),
+        String(s) => result!(StringLiteral { s: s.to_string() }),
+        Identifier(name) => result!(self::Identifier::new(scope_stack.get(name))),
         BinaryOp(ref l, op, ref r) => {
             let lhs = expr!(l);
             let rhs = expr!(r);
@@ -350,8 +349,8 @@ pub fn build_expr<'a>(
             let argument_exprs = expr_list!(argument_exprs);
             if let Some(func) = globals.reference_func(fname) {
                 result!(self::Call {
-                    func: func,
-                    argument_exprs: argument_exprs,
+                    func,
+                    argument_exprs,
                 })
             } else {
                 failure!(StaticAnalysisError::CallUnknownFunction(
@@ -373,11 +372,11 @@ pub fn build_expr<'a>(
             let expr = expr!(ast_expr);
             macro_rules! int_op {
                 ( $op:tt ) => {
-                    result!(UnaryIntegerOp { expr: expr, func: |v| {$op v} })
+                    result!(UnaryIntegerOp { expr, func: |v| {$op v} })
                 }
             }
             match op {
-                BoolNot => result!(self::BoolNot { expr: expr }),
+                BoolNot => result!(self::BoolNot { expr }),
                 BitNot => int_op!(!),
                 Neg => int_op!(-),
                 Plus => unimplemented!(),
@@ -406,9 +405,9 @@ pub fn build_lexpr<'a>(
             ex
         }};
     }
-    match expr.kind {
-        Identifier(ref name) => result!(self::Identifier::new(scope_stack.get(name))),
-        Subscription(ref array_expr, ref index_expr) => result!(self::Subscription {
+    match &expr.kind {
+        Identifier(name) => result!(self::Identifier::new(scope_stack.get(name))),
+        Subscription(array_expr, ref index_expr) => result!(self::Subscription {
             array_expr: expr!(array_expr),
             index_expr: expr!(index_expr),
         }),

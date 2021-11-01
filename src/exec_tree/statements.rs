@@ -11,7 +11,7 @@ impl Statement for Return {
     fn do_stmt(&self, globals: &Globals, locals: &mut Locals) -> ExecResult<FunctionState> {
         self.expr
             .evaluate(globals, locals)
-            .map(|v| FunctionState::Return(v))
+            .map(FunctionState::Return)
     }
 }
 
@@ -73,7 +73,7 @@ impl Statement for WhileStatement {
 pub fn build_block<'a>(
     globals: &Globals,
     scope_stack: &mut ScopeStack,
-    stmts: &'a Vec<ast::Statement>,
+    stmts: &'a [ast::Statement],
 ) -> BuildResult<'a, Vec<Box<dyn Statement>>> {
     let mut rv: Vec<Box<dyn Statement>> = Vec::with_capacity(stmts.len());
     let mut failures = Vec::new();
@@ -99,7 +99,7 @@ pub fn build_block<'a>(
     for stmt in stmts {
         match *stmt {
             ast::Statement::Return(ref expr) => stmt!(Return { expr: expr!(expr) }),
-            ast::Statement::Declare(ref name, ref expr) => {
+            ast::Statement::Declare(name, ref expr) => {
                 let var_id = scope_stack.declare(name);
                 stmt!(Assign {
                     lexpr: Box::new(Identifier::new(var_id)),
@@ -110,7 +110,7 @@ pub fn build_block<'a>(
                 let (lexpr, inner_failures) = build_lexpr(globals, scope_stack, lexpr);
                 failures.extend(inner_failures);
                 stmt!(Assign {
-                    lexpr: lexpr,
+                    lexpr,
                     rexpr: expr!(rexpr),
                 })
             }
